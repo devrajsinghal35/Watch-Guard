@@ -1,168 +1,721 @@
-# SENTRY — Minimal SOC Network Security Monitoring Project
+# SENTRY
+### Lightweight SOC Alert Dashboard & Network Security Monitoring System
 
-A lightweight, technically accurate **Security Operations Center (SOC) Alert Dashboard & Network Security Monitoring (NSM)** system built with **Python Flask** and **React (Vite)**.
+SENTRY is a lightweight **Network Security Monitoring (NSM)** and **SOC alert dashboard** built with **Python Flask, Scapy, SQLite, and React**.
 
-Monitors network packet metadata and security login events, detects rule-based attack patterns (Port Scan, SYN Flood, Brute Force), assigns deterministic integer threat scores ($0–100$), and renders real-time alerts in a modern dark-mode React console.
+It collects network packet metadata and authentication events, applies deterministic rule-based detection logic to identify common attack patterns, stores generated security alerts, and presents them through a real-time security operations dashboard.
+
+The system is designed for **local security monitoring, testing, demonstrations, and learning purposes**.
 
 ---
 
-## 1. Project Architecture
+## Overview
+
+SENTRY combines network telemetry, authentication events, rule-based threat detection, persistent storage, REST APIs, and a React-based SOC interface into a single system.
 
 ```text
-                               ┌─────────────────────────┐
-                               │  Network Interface /    │
-                               │  Scapy Sniffer Metadata │
-                               └────────────┬────────────┘
-                                            │ (Packet Metadata: SRC:SPORT → DST:DPORT)
-                                            ▼
-┌───────────────────────┐      ┌─────────────────────────┐
-│ Login Events / Logs   ├─────►│ Rule Detection Engine   │
-│ (SSH/FTP/RDP Failed)  │      │ (detector.py)           │
-└───────────────────────┘      └────────────┬────────────┘
-                                            │ (Alerts + Threat Scores: 0-100)
-                                            ▼
-                               ┌─────────────────────────┐
-                               │ SQLite Database Store   │
-                               │ (sentry.db)             │
-                               └────────────┬────────────┘
-                                            │
-                                            ▼
-                               ┌─────────────────────────┐
-                               │ Flask REST API          │
-                               │ (app.py :5050)          │
-                               └────────────┬────────────┘
-                                            │ (JSON APIs / Proxy)
-                                            ▼
-                               ┌─────────────────────────┐
-                               │ React SOC Dashboard     │
-                               │ (Vite :3000)            │
-                               └─────────────────────────┘
+┌──────────────────────────────┐
+│     Network Interface        │
+│        Scapy Capture         │
+└──────────────┬───────────────┘
+               │
+               │ Packet Metadata
+               ▼
+┌──────────────────────────────┐
+│                              │
+│     Detection Engine         │
+│        detector.py           │
+│                              │
+│  • Port Scan                 │
+│  • SYN Flood                 │
+│  • Brute Force               │
+│                              │
+└──────────────┬───────────────┘
+               │
+               │ Security Alerts
+               ▼
+┌──────────────────────────────┐
+│        SQLite Database       │
+│                              │
+│  • alerts                    │
+│  • network_events            │
+│  • login_events              │
+└──────────────┬───────────────┘
+               │
+               │ REST API / JSON
+               ▼
+┌──────────────────────────────┐
+│        Flask Backend         │
+│            :5050             │
+└──────────────┬───────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│       React Dashboard        │
+│            :3000             │
+│                              │
+│  • Alert Queue               │
+│  • Network Feed              │
+│  • Security Metrics          │
+│  • Live / Demo Mode          │
+└──────────────────────────────┘
 ```
 
 ---
 
-## 2. Directory Structure
+## Key Features
+
+- Network packet metadata monitoring using **Scapy**
+- Rule-based security detection engine
+- Port scan detection
+- TCP SYN flood detection
+- SSH/FTP/RDP brute-force detection
+- Deterministic threat scoring from **0–100**
+- Alert severity classification
+- Persistent SQLite storage
+- RESTful Flask API
+- React + Vite security dashboard
+- Ranked alert queue
+- Live network event feed
+- Live Mode and Demo Mode
+- Synthetic attack generation for testing
+- Bulk demo data seeding
+- Automated detection tests using Pytest
+- Packet payloads are not stored by the monitoring layer
+
+---
+
+# Detection Engine
+
+SENTRY currently implements three rule-based detections.
+
+| Detection | Rule | Score | Severity |
+|---|---|---:|---|
+| `PORT_SCAN` | ≥ 10 unique destination ports from the same source IP within 10 seconds | 70 | HIGH |
+| `SYN_FLOOD` | ≥ 50 TCP SYN packets with `ACK=0` within 5 seconds | 90 | CRITICAL |
+| `BRUTE_FORCE` | ≥ 5 failed login attempts from the same source IP for the same service within 3 minutes | 80 | HIGH |
+
+The detection engine is intentionally deterministic. The same input event sequence produces the same detection result and threat score.
+
+---
+
+## 1. Port Scan Detection
+
+A port scan attempts to discover services exposed by a host by sending connection requests to multiple ports.
+
+SENTRY tracks:
+
+```text
+source IP
+destination IP
+destination port
+timestamp
+```
+
+A port scan alert is generated when the same source IP accesses at least **10 unique destination ports within a 10-second window**.
+
+### Example
+
+```text
+192.168.1.50 → 192.168.1.20:21
+192.168.1.50 → 192.168.1.20:22
+192.168.1.50 → 192.168.1.20:23
+192.168.1.50 → 192.168.1.20:25
+...
+```
+
+If the number of unique destination ports reaches the configured threshold, SENTRY generates:
+
+```text
+Alert Type: PORT_SCAN
+Threat Score: 70
+Severity: HIGH
+```
+
+---
+
+## 2. SYN Flood Detection
+
+TCP normally establishes a connection using a three-way handshake:
+
+```text
+Client                  Server
+  │                       │
+  │────── SYN ───────────>│
+  │<──── SYN-ACK ─────────│
+  │────── ACK ───────────>│
+  │                       │
+       Connection
+       Established
+```
+
+A SYN flood generates a large number of SYN requests without completing the normal handshake.
+
+SENTRY monitors TCP packets where:
+
+```text
+SYN = 1
+ACK = 0
+```
+
+An alert is generated when at least **50 qualifying packets occur within 5 seconds**.
+
+```text
+Alert Type: SYN_FLOOD
+Threat Score: 90
+Severity: CRITICAL
+```
+
+---
+
+## 3. Brute-Force Detection
+
+SENTRY also analyzes authentication events.
+
+Supported services include:
+
+```text
+SSH   → 22
+FTP   → 21
+RDP   → 3389
+```
+
+The detection engine groups failed authentication attempts by:
+
+```text
+source IP + service
+```
+
+If at least **5 failed attempts occur within 3 minutes**, SENTRY generates a brute-force alert.
+
+```text
+Alert Type: BRUTE_FORCE
+Threat Score: 80
+Severity: HIGH
+```
+
+---
+
+# Threat Scoring
+
+SENTRY uses a deterministic integer threat score between **0 and 100**.
+
+Current scoring:
+
+```text
+PORT_SCAN       → 70
+BRUTE_FORCE     → 80
+SYN_FLOOD       → 90
+```
+
+The score is used to prioritize alerts in the SOC dashboard.
+
+The ranked alert endpoint sorts alerts by:
+
+```text
+threat_score DESC
+```
+
+This allows higher-risk alerts to appear first in the analyst queue.
+
+---
+
+# Network Telemetry
+
+SENTRY captures **packet metadata rather than packet payload contents**.
+
+Example metadata:
+
+```text
+SRC: 192.168.1.50:49152
+DST: 192.168.1.20:22
+PROTO: TCP
+TIMESTAMP: 2026-08-30T12:30:10
+```
+
+The monitoring layer focuses on network characteristics such as:
+
+- Source IP
+- Destination IP
+- Source port
+- Destination port
+- Protocol
+- TCP flags
+- Timestamp
+
+This reduces unnecessary collection of application payload data.
+
+---
+
+# Standard Network Ports
+
+SENTRY uses standard service ports when representing network activity.
+
+| Port | Protocol / Service |
+|---:|---|
+| 21 | FTP |
+| 22 | SSH |
+| 53 | DNS |
+| 80 | HTTP |
+| 443 | HTTPS |
+| 3389 | RDP |
+
+Client applications commonly use dynamically allocated **ephemeral source ports**, which are different from well-known server-side service ports.
+
+---
+
+# Application Architecture
+
+The application is divided into separate layers.
+
+### Capture Layer
+
+`capture.py`
+
+Responsible for collecting network packet metadata using Scapy.
+
+```text
+Network Interface
+       ↓
+     Scapy
+       ↓
+Packet Metadata
+```
+
+---
+
+### Detection Layer
+
+`detector.py`
+
+Contains the rule-based security detection logic.
+
+```text
+Network Events
+      +
+Login Events
+      ↓
+Detection Rules
+      ↓
+Security Alerts
+```
+
+The detection engine is separated from the Flask application so that detection logic can be tested independently.
+
+---
+
+### Database Layer
+
+`database.py`
+
+Provides SQLite persistence for:
+
+```text
+alerts
+network_events
+login_events
+```
+
+The database allows security events and generated alerts to remain available after individual API requests finish.
+
+---
+
+### API Layer
+
+`app.py`
+
+Provides the Flask REST API used by the frontend.
+
+```text
+React
+  ↓
+HTTP / JSON
+  ↓
+Flask API
+  ↓
+Detection / Database
+```
+
+---
+
+### Frontend Layer
+
+The frontend is implemented using:
+
+- React
+- Vite
+- Vanilla CSS
+- Chart.js
+
+The dashboard consumes the Flask API and displays security telemetry in a SOC-style interface.
+
+---
+
+# Project Structure
 
 ```text
 sentry_final/
+│
 ├── backend/
-│   ├── app.py                # Flask REST API endpoints & route handlers
-│   ├── detector.py           # Pure rule-based threat detection engine
-│   ├── database.py           # SQLite database manager (alerts, login_events, network_events)
-│   ├── capture.py            # Lightweight Scapy packet metadata collector
-│   └── requirements.txt      # Backend Python dependencies
+│   ├── app.py
+│   ├── detector.py
+│   ├── database.py
+│   ├── capture.py
+│   └── requirements.txt
+│
 ├── frontend/
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── AlertList.jsx          # Security alerts list feed
-│   │   │   ├── Dashboard.jsx          # Main SOC console / stats & metrics charts container
-│   │   │   ├── Header.jsx             # Top nav with LIVE MODE vs DEMO MODE toggle
-│   │   │   └── NetworkFeed.jsx        # Live network packet stream feed
-│   │   ├── App.css                # Styling system (Vanilla CSS dark theme)
-│   │   ├── App.jsx                # Main React app entry point
-│   │   ├── api.js                 # Frontend API handler functions for backend requests
-│   │   └── main.jsx               # React DOM render entry point
+│   │   │   ├── AlertList.jsx
+│   │   │   ├── Dashboard.jsx
+│   │   │   ├── Header.jsx
+│   │   │   └── NetworkFeed.jsx
+│   │   │
+│   │   ├── App.jsx
+│   │   ├── App.css
+│   │   ├── api.js
+│   │   └── main.jsx
+│   │
 │   ├── package.json
 │   ├── package-lock.json
 │   ├── vite.config.js
 │   └── index.html
+│
 ├── tests/
-│   └── test_detection.py      # Rule-based threat detection automated tests
-└── README.md                  # Project documentation
+│   └── test_detection.py
+│
+├── README.md
+└── ...
 ```
 
 ---
 
-## 3. Core Security Detections
+# REST API
 
-| Alert Type | Detection Engine Rule | Threat Score | Severity | Description |
-| :--- | :--- | :---: | :---: | :--- |
-| **`PORT_SCAN`** | $\ge 10$ unique destination ports from same source IP in 10s | **70 / 100** | `HIGH` | Multiple destination ports probed within short time window |
-| **`SYN_FLOOD`** | High rate ($\ge 50$) of TCP packets with `SYN=1, ACK=0` in 5s | **90 / 100** | `CRITICAL` | High rate of TCP SYN connection requests targeting target IP:port |
-| **`BRUTE_FORCE`** | $\ge 5$ failed logins from same source IP on same service in 3m | **80 / 100** | `HIGH` | Repeated failed SSH/FTP/RDP login attempts |
+## Statistics
 
----
+### `GET /api/stats`
 
-- Explicit direction format: `192.168.1.50:49152 → 192.168.1.20:22`
-- Accurate service ports:
-  - `21` = FTP
-  - `22` = SSH
-  - `53` = DNS
-  - `80` = HTTP
-  - `443` = HTTPS
-  - `3389` = RDP
-- Deterministic integer threat scores ($0–100$) — no random fake decimals.
+Returns dashboard summary statistics.
+
+Example:
+
+```json
+{
+  "total_events": 1200,
+  "total_alerts": 15,
+  "threat_score": 90
+}
+```
 
 ---
 
-## 6. API Endpoints
+## Alerts
 
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/api/stats` | Summary statistics (Total Events, Alerts, Threat Scores) |
-| `GET` | `/api/alerts` | List security alerts |
-| `GET` | `/api/alerts/ranked` | Ranked Alert Queue sorted by `threat_score DESC` |
-| `GET` | `/api/network/live` | Live network metadata stream |
-| `POST` | `/api/login/analyze` | Evaluate login attempt security risk |
-| `POST` | `/api/login-events` | Ingest login attempt event (triggers rules engines) |
-| `GET` | `/api/mode` | Current mode (`LIVE MODE` vs `DEMO MODE`) |
-| `POST` | `/api/mode/toggle` | Toggle mode between Live and Demo |
-| `POST` | `/api/demo/trigger` | Trigger synthetic attack test (`PORT_SCAN`, `SYN_FLOOD`, `BRUTE_FORCE`) |
-| `POST` | `/api/demo/seed` | Seed 50,000+ packets and alerts instantly for local/live demos |
+### `GET /api/alerts`
+
+Returns security alerts stored in the database.
 
 ---
 
-## 7. How to Run Locally
+### `GET /api/alerts/ranked`
 
-### Step 1: Start Backend (Flask API)
+Returns alerts ordered by threat score.
+
+```text
+Highest threat
+      ↓
+90 - SYN_FLOOD
+80 - BRUTE_FORCE
+70 - PORT_SCAN
+      ↓
+Lowest threat
+```
+
+---
+
+## Live Network Feed
+
+### `GET /api/network/live`
+
+Returns recent network metadata collected by the monitoring system.
+
+---
+
+## Login Analysis
+
+### `POST /api/login/analyze`
+
+Analyzes a login attempt and evaluates its security risk.
+
+---
+
+## Login Event Ingestion
+
+### `POST /api/login-events`
+
+Accepts authentication events and passes them through the detection engine.
+
+Example event:
+
+```json
+{
+  "source_ip": "192.168.1.50",
+  "service": "SSH",
+  "status": "failed"
+}
+```
+
+---
+
+## Operating Mode
+
+### `GET /api/mode`
+
+Returns the current monitoring mode.
+
+Possible modes:
+
+```text
+LIVE MODE
+DEMO MODE
+```
+
+### `POST /api/mode/toggle`
+
+Switches between Live Mode and Demo Mode.
+
+---
+
+## Demo Attack Generation
+
+### `POST /api/demo/trigger`
+
+Generates a synthetic security event for testing the detection and dashboard pipeline.
+
+Supported attack types:
+
+```text
+PORT_SCAN
+SYN_FLOOD
+BRUTE_FORCE
+```
+
+---
+
+## Demo Data Seeding
+
+### `POST /api/demo/seed`
+
+Generates a large volume of synthetic network and alert data for dashboard demonstrations and performance testing.
+
+---
+
+# Live Mode
+
+Live Mode uses Scapy to monitor the active network interface.
+
+```text
+Network Interface
+       ↓
+     Scapy
+       ↓
+Packet Metadata
+       ↓
+Detection Engine
+       ↓
+SQLite
+       ↓
+Flask API
+       ↓
+React Dashboard
+```
+
+Because packet capture interacts with network interfaces, the operating system may require elevated privileges depending on the environment.
+
+---
+
+# Demo Mode
+
+Demo Mode allows the complete detection pipeline to be tested without relying on live network traffic.
+
+Synthetic events can be generated for:
+
+```text
+Port Scan
+SYN Flood
+Brute Force
+```
+
+This is useful for:
+
+- Local development
+- UI testing
+- Detection testing
+- Demonstrations
+- Environments where packet capture privileges are unavailable
+
+Demo events should be clearly treated as **synthetic telemetry**, not real network attacks.
+
+---
+
+# Installation
+
+## Prerequisites
+
+Install the following:
+
+- Python 3.10+
+- Node.js 18+
+- npm
+- Git
+
+For Live Mode:
+
+- Scapy
+- Permission to capture network traffic on the selected interface
+
+---
+
+# Backend Setup
+
+From the project root:
+
 ```bash
-# From project root
-./venv/bin/python -m backend.app
-# Server runs on http://127.0.0.1:5050
+python3 -m venv venv
 ```
 
-### Step 2: Start Frontend (React + Vite)
+Activate the virtual environment.
+
+### macOS / Linux
+
+```bash
+source venv/bin/activate
+```
+
+### Windows
+
+```powershell
+venv\Scripts\activate
+```
+
+Install dependencies:
+
+```bash
+pip install -r backend/requirements.txt
+```
+
+Start the Flask server:
+
+```bash
+python -m backend.app
+```
+
+The backend runs on:
+
+```text
+http://127.0.0.1:5050
+```
+
+---
+
+# Frontend Setup
+
+Open another terminal:
+
 ```bash
 cd frontend
 npm install
 npm run dev
-# Dashboard opens on http://localhost:3000
 ```
 
-### Step 3: Run Automated Tests
+The React development server runs on:
+
+```text
+http://localhost:3000
+```
+
+---
+
+# Running Tests
+
+From the project root:
+
 ```bash
-PYTHONPATH=. ./venv/bin/pytest tests/
+PYTHONPATH=. pytest tests/
+```
+
+The test suite validates the rule-based detection engine, including the configured thresholds for:
+
+```text
+PORT_SCAN
+SYN_FLOOD
+BRUTE_FORCE
 ```
 
 ---
 
-## 8. Live Mode vs Demo Mode
+# Example Event Flow
 
-- **LIVE MODE**: Sniffs packet metadata (`scapy`) on local active machine network interfaces.
-- **DEMO MODE**: UI toggle allowing 1-click generation of synthetic Port Scan, SYN Flood, and Brute Force attacks without requiring root privileges.
+A typical port-scan event can move through the system as follows:
+
+```text
+1. Network packet observed
+          ↓
+2. Scapy extracts packet metadata
+          ↓
+3. Network event recorded
+          ↓
+4. Detection engine evaluates event
+          ↓
+5. 10 unique ports detected
+          ↓
+6. PORT_SCAN alert generated
+          ↓
+7. Threat score = 70
+          ↓
+8. Alert stored in SQLite
+          ↓
+9. Flask API exposes alert
+          ↓
+10. React dashboard displays alert
+```
 
 ---
 
-## 9. 2-Day Interview Learning Plan
+# Security Design Considerations
 
-To confidently explain this project in an interview, learn these 4 core pillars:
+SENTRY intentionally separates telemetry collection, detection, persistence, API handling, and visualization.
 
-### Day 1: Detection Logic & Networking
-1. **Port Scan**: Explain how tracking `unique destination ports per source_ip` over a sliding 10s window identifies port sweeps.
-2. **SYN Flood**: Explain how TCP 3-way handshakes work (`SYN` $\rightarrow$ `SYN-ACK` $\rightarrow$ `ACK`). An attacker sending high `SYN` rates without completing `ACK` exhausts server state.
-3. **Brute Force**: Explain tracking failed login attempts (`status='failed'`) per `source_ip` + `service` within 3 minutes.
-4. **Networking Rules**: Know standard ports (`22=SSH`, `21=FTP`, `80=HTTP`, `443=HTTPS`) and client ephemeral ports ($>49152$).
+### Metadata-focused monitoring
 
-### Day 2: System Architecture & Data Flow
-1. **Packet Capture**: Explain metadata collection (`scapy.sniff()`) collecting `src_ip`, `dst_ip`, `src_port`, `dst_port`, `proto` without storing payload privacy content.
-2. **Database & API**: Explain SQLite schema (`alerts`, `login_events`, `network_events`) and Flask REST endpoints returning JSON to React.
-3. **React State & Telemetry**: Explain React `useState`/`useEffect` polling Flask APIs every 3 seconds to update the Ranked Alert Queue (`threat_score DESC`).
+The capture layer focuses on metadata instead of storing packet payloads.
+
+### Deterministic detection
+
+Detection rules use explicit thresholds rather than randomized or probabilistic scores.
+
+### Modular detection engine
+
+Detection logic is separated from the web application, making individual rules easier to test and extend.
+
+### Synthetic testing
+
+Demo Mode provides controlled test events without requiring real attacks to be performed against external systems.
 
 ---
 
-## 10. ATS Resume Bullets
+# Limitations
 
-- **Engineered a real-time Network Security Monitoring (NSM) & SOC Alert Dashboard** to detect network anomalies, port scans, and SYN flood attacks across active machine interfaces **using Python Flask, Scapy packet metadata extraction, and React.js.**
-- **Processed 50,000+ live-captured network packets in a single test run and correctly flagged simulated port-scan and SYN-flood attacks in real time with zero false positives observed during testing.**
-- **Built modular RESTful APIs and an interactive SOC console featuring Ranked Alert Queues and IP Entity Profiling** to accelerate security analyst incident response times **by leveraging Flask-CORS, Chart.js, React (Vite), and Pytest automated testing (100% test pass rate).**
+SENTRY is a **lightweight rule-based NSM project**, not a production enterprise SIEM or IDS/IPS.
 
+Current limitations include:
+
+- Detection is based on fixed thresholds.
+- Only three primary attack patterns are currently implemented.
+- SQLite is intended for local/lightweight usage rather than large-scale distributed telemetry.
+- Packet capture depends on local interface visibility and operating-system permissions.
+- The system does not perform deep packet inspection.
+- It does not provide full endpoint detection and response capabilities.
+- It does not replace enterprise SIEM, IDS, IPS, firewall, or EDR platforms.
+- Threshold
