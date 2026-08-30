@@ -718,4 +718,90 @@ Current limitations include:
 - The system does not perform deep packet inspection.
 - It does not provide full endpoint detection and response capabilities.
 - It does not replace enterprise SIEM, IDS, IPS, firewall, or EDR platforms.
-- Threshold
+- Thresholds may require tuning for different network environments.
+- The current detection logic can produce false positives in high-traffic environments.
+
+These limitations are intentional for keeping the project lightweight and understandable.
+
+---
+
+# Future Improvements
+
+Potential extensions include:
+
+- Additional detection rules
+- DNS anomaly detection
+- ICMP flood detection
+- Suspicious outbound connection detection
+- Authentication anomaly detection
+- Configurable detection thresholds
+- IP reputation integration
+- Alert deduplication
+- Alert acknowledgment and lifecycle management
+- WebSocket-based real-time telemetry
+- PostgreSQL support for larger deployments
+- Role-based authentication
+- API authentication and authorization
+- Structured logging
+- Containerized deployment
+- Detection-rule configuration through the dashboard
+- SIEM integration
+- MITRE ATT&CK technique mapping
+
+---
+
+# Technology Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | React |
+| Build Tool | Vite |
+| Styling | Vanilla CSS |
+| Charts | Chart.js |
+| Backend | Python |
+| Web Framework | Flask |
+| Network Capture | Scapy |
+| Database | SQLite |
+| API Format | REST / JSON |
+| Testing | Pytest |
+| CORS | Flask-CORS |
+
+---
+
+# Development Principles
+
+The project follows a few simple engineering principles:
+
+**Separation of concerns**
+
+Capture, detection, database operations, API routes, and frontend components are kept separate.
+
+**Deterministic behavior**
+
+Security rules produce predictable results from the same input.
+
+**Testable detection logic**
+
+The detection engine can be tested independently of the web interface.
+
+**Minimal data collection**
+
+The monitoring layer focuses on network metadata rather than packet payload storage.
+
+**Demo-friendly architecture**
+
+Synthetic telemetry makes it possible to demonstrate the system without generating real malicious traffic.
+
+---
+
+# Disclaimer
+
+SENTRY is intended for **educational, defensive security monitoring, authorized testing, and local development environments**.
+
+Only monitor networks, systems, and authentication infrastructure that you own or have explicit permission to assess.
+
+---
+
+# License
+
+Add your preferred open-source license to this repository before publishing, such as MIT, Apache-2.0, or GPL-3.0.
