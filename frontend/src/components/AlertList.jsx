@@ -1,15 +1,15 @@
 import React from 'react';
 import { Flame } from 'lucide-react';
 
-// Epoch timestamp helper function for alerts time formats
+// Formats epoch timestamps to a readable local time format for alert entries
 function fmtTime(ts) {
   if (!ts) return '—';
   return new Date(ts * 1000).toLocaleTimeString([], { hour12: false });
 }
 
-// Alerts lists container generator function
+// Renders the list of security alerts
 export default function AlertList({ alerts }) {
-  // Alerts list array ko sorting algorithm run karke risk score ke high sequence variables sort order key map
+  // Sort the alerts array in descending order based on the threat score
   const sorted = [...(alerts || [])].sort((a, b) => b.threat_score - a.threat_score);
 
   return (
@@ -20,13 +20,13 @@ export default function AlertList({ alerts }) {
         </div>
       </div>
       <div className="feed feed-ranked">
-        {/* Placeholder alert details verification agar empty data lists active state elements loop */}
+        {/* Render placeholder message if there are no alerts */}
         {sorted.length === 0 ? (
           <div style={{ color: 'var(--text-dim)', padding: '30px 0', textAlign: 'center' }}>
             No security alerts detected.
           </div>
         ) : (
-          /* Har single threat alert item block card create query updates layout details */
+          /* Map through and render each threat alert record */
           sorted.map((a, idx) => {
             const sevClass = (a.severity || 'low').toLowerCase();
             return (

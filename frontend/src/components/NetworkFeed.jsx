@@ -1,13 +1,13 @@
 import React from 'react';
 import { Activity } from 'lucide-react';
 
-// Epoch timestamp ko readable format me clean convert karne ka time formatter function
+// Time formatter utility to convert epoch timestamps to readable local time format
 function fmtTime(ts) {
   if (!ts) return '—';
   return new Date(ts * 1000).toLocaleTimeString([], { hour12: false });
 }
 
-// Live capturing packets metadata grid box panels generator function
+// Renders the live capturing packet metadata feed panel
 export default function NetworkFeed({ events, highlighted }) {
   return (
     <div className={`panel ${highlighted ? 'panel-highlight' : ''}`}>
@@ -17,13 +17,13 @@ export default function NetworkFeed({ events, highlighted }) {
         </div>
       </div>
       <div className="feed">
-        {/* Agar streams history arrays blank hain toh placeholder view message show karenge */}
+        {/* Display placeholder message if there are no network events */}
         {!events || events.length === 0 ? (
           <div style={{ color: 'var(--text-dim)', padding: '30px 0', textAlign: 'center' }}>
             No live packet metadata recorded yet. Click "⚡ LIVE MODE" or "● DEMO MODE" to stream traffic.
           </div>
         ) : (
-          /* Recent 50 packets streams screen logs print query mapping loop run */
+          /* Render the most recent 50 network packet records */
           events.slice(0, 50).map((e, idx) => (
             <div key={idx} className="feed-row low">
               <div className="feed-time">{fmtTime(e.ts)}</div>

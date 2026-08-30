@@ -9,12 +9,12 @@ from backend.database import Database
 from backend.detector import DetectionEngine
 from backend.capture import PacketCapturer
 
-# Backend and DB paths define kar rahe hain
+# Define backend and database paths
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = os.path.join(BASE_DIR, "backend", "sentry.db")
 
 app = Flask(__name__)
-CORS(app) # React frontend ke requests allow karne ke liye CORS enable kiya hai
+CORS(app) # Enable CORS to allow requests from the React frontend
 
 db = Database(DB_PATH)
 detector = DetectionEngine()

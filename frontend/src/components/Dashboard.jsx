@@ -1,8 +1,8 @@
 import React from 'react';
 
-// Yeh component total alerts and averages metrics grid boxes draw karta hai dashboard summary stats update karne ke liye
+// This component draws the metric summary cards for the SOC dashboard
 export default function Dashboard({ stats }) {
-  // Stats items structure configurations mapping metrics keys
+  // Mapping metrics to display labels and values
   const items = [
     { label: 'Total Events', val: stats?.total_events ?? '—' },
     { label: 'Total Alerts', val: stats?.total_alerts ?? '—' },
@@ -14,7 +14,7 @@ export default function Dashboard({ stats }) {
 
   return (
     <section className="stat-grid">
-      {/* Map loop run karke har category ke dashboard grids banate hain */}
+      {/* Map through the items to render each metric card */}
       {items.map((it, idx) => (
         <div key={idx} className="stat-card">
           <div className="stat-label">{it.label}</div>

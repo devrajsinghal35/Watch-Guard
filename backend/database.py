@@ -46,13 +46,13 @@ CREATE INDEX IF NOT EXISTS idx_network_ts ON network_events(ts);
 """
 
 class Database:
-    # Database helper object jo tables auto-initialize kar dega
+    # Database helper object that auto-initializes the schema tables
     def __init__(self, db_path):
         self.db_path = db_path
         with self._connect() as conn:
             conn.executescript(SCHEMA_SQL)
 
-    # Safe SQL connections generate karne ka safe context helper
+    # Helper manager to safely create SQLite connections with context handling
     @contextmanager
     def _connect(self):
         conn = sqlite3.connect(self.db_path)
@@ -63,7 +63,7 @@ class Database:
         finally:
             conn.close()
 
-    # Alerts save karne ka db entry writer function
+    # Save security alerts to the database
     def insert_alert(self, alert):
         with self._connect() as conn:
             cur = conn.execute(
@@ -87,7 +87,7 @@ class Database:
             )
             return cur.lastrowid
 
-    # Filtered alerts fetching endpoints fetch query logic
+    # Retrieve filtered alerts history based on query parameters
     def get_alerts(self, limit=100, alert_type=None, severity=None):
         sql = "SELECT * FROM alerts WHERE 1=1"
         args = []
@@ -104,14 +104,14 @@ class Database:
             res = conn.execute(sql, args).fetchall()
         return [dict(r) for r in res]
 
-    # Priority threats dashboard queue (sorted desc threat risk score)
+    # Fetch priority threats sorted by threat score in descending order
     def get_ranked_alerts(self, limit=100):
         sql = "SELECT * FROM alerts ORDER BY threat_score DESC, ts DESC LIMIT ?"
         with self._connect() as conn:
             res = conn.execute(sql, [limit]).fetchall()
         return [dict(r) for r in res]
 
-    # User login events database logs entry save script
+    # Log authentication events to the database
     def insert_login_event(self, evt):
         with self._connect() as conn:
             conn.execute(
@@ -133,7 +133,7 @@ class Database:
             res = conn.execute(sql, [ip_address, limit]).fetchall()
         return [dict(r) for r in res]
 
-    # General packet metadata statistics database tracker entry writer
+    # Save general packet metadata details to the database
     def insert_network_event(self, pkt):
         with self._connect() as conn:
             conn.execute(
@@ -150,7 +150,7 @@ class Database:
                 ),
             )
 
-    # Batch insert helper for generating 50,000+ packets instantly
+    # Perform batch insertion for fast mock network data loading
     def insert_network_events_batch(self, pkts):
         with self._connect() as conn:
             conn.executemany(
@@ -170,14 +170,14 @@ class Database:
                 ]
             )
 
-    # Real time network packets fetch helper taaki UI updates instantly
+    # Retrieve recent network events to update the UI dashboard feed
     def get_live_network(self, limit=50):
         sql = "SELECT * FROM network_events ORDER BY ts DESC LIMIT ?"
         with self._connect() as conn:
             res = conn.execute(sql, [limit]).fetchall()
         return [dict(r) for r in res]
 
-    # Dash summary cards and score counts metrics calculate function
+    # Calculate aggregate statistics for the dashboard UI cards
     def get_stats(self):
         with self._connect() as conn:
             total_alerts = conn.execute("SELECT COUNT(*) c FROM alerts").fetchone()["c"]

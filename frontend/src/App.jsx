@@ -14,7 +14,7 @@ import {
 } from './api';
 import './App.css';
 
-// Main App component jo complete dashboard state manage karta hai
+// Main App component that manages the dashboard application state
 export default function App() {
   // Application hooks state declarations
   const [stats, setStats] = useState(null);
@@ -25,7 +25,7 @@ export default function App() {
   const [toasts, setToasts] = useState([]);
   const [highlightNetwork, setHighlightNetwork] = useState(false);
 
-  // Screen alerts and success notifications update helper
+  // Screen alerts and success notifications helper
   const addToast = (message, type = 'success') => {
     const id = Date.now() + Math.random();
     setToasts((prev) => [...prev, { id, message, type }]);
@@ -34,7 +34,7 @@ export default function App() {
     }, 4000);
   };
 
-  // Flask backend se data retrieve aur refresh karne wala main function
+  // Main callback function to retrieve and refresh data from the Flask backend
   const refreshData = useCallback(async () => {
     try {
       const [sRes, aRes, nRes, mRes] = await Promise.all([
@@ -55,14 +55,14 @@ export default function App() {
     }
   }, []);
 
-  // Polling mechanism set karne ke liye hook (har 3 seconds me refresh)
+  // Set up polling mechanism to refresh dashboard data every 3 seconds
   useEffect(() => {
     refreshData();
     const interval = setInterval(refreshData, 3000);
     return () => clearInterval(interval);
   }, [refreshData]);
 
-  // Capture mode toggle callback function
+  // Capture mode toggle callback handler
   const handleToggleMode = async () => {
     try {
       const res = await toggleMode();
@@ -76,7 +76,7 @@ export default function App() {
     }
   };
 
-  // Click attack tests button callback handler
+  // Trigger simulated attacks callback handler
   const handleTriggerAttack = async (attackType) => {
     try {
       const res = await triggerDemoAttack(attackType);

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Zap, Play, Wifi, WifiOff } from 'lucide-react';
 
-// Sentry header navigation panel jo status details manage karta hai
+// Sentry header navigation panel displaying system status and controls
 export default function Header({ demoMode, onToggleMode, onTriggerAttack, apiOnline, onSeedDemoData }) {
   return (
     <header className="header">

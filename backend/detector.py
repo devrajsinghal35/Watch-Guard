@@ -1,6 +1,6 @@
 import time
 
-# Thresholds parameters define kar rahe hain detection alerts trigger karne ke liye
+# Threshold parameters defining when detection alerts are triggered
 PORT_SCAN_LIMIT = 10
 PORT_SCAN_SEC = 10
 
@@ -10,7 +10,7 @@ SYN_FLOOD_SEC = 5
 BRUTE_FORCE_LIMIT = 5
 BRUTE_FORCE_SEC = 180
 
-# Alag-alag alerts ke default deterministic risk scores
+# Default deterministic threat/risk scores for different alert types
 SCORES = {
     "PORT_SCAN": 70,
     "BRUTE_FORCE": 80,
@@ -18,7 +18,7 @@ SCORES = {
     "NORMAL": 10,
 }
 
-# Alert type ke according severities map kiye hain
+# Severity mapping corresponding to each alert type
 SEVERITIES = {
     "PORT_SCAN": "HIGH",
     "BRUTE_FORCE": "HIGH",
@@ -26,11 +26,11 @@ SEVERITIES = {
     "NORMAL": "LOW",
 }
 
-# Yeh function direct risk score return karta hai based on alert type
+# Returns the direct threat score based on the alert type
 def score_threat(alert_name):
     return SCORES.get(alert_name, 20)
 
-# Threat score value se severity text classify karne ka helper
+# Helper function to classify severity label from the threat score value
 def get_severity(score_val):
     if score_val >= 90:
         return "CRITICAL"
@@ -41,18 +41,18 @@ def get_severity(score_val):
     return "LOW"
 
 class DetectionEngine:
-    # History buffer arrays initialize ho rahe hain sliding window comparisons ke liye
+    # Initialize history buffer arrays for sliding window comparisons
     def __init__(self):
         self.packets = []
         self.logins = []
 
-    # Har new packet ko analyze karke anomaly scan aur syn flood rules run karta hai
+    # Analyzes each new packet and runs port scan and syn flood detection rules
     def process_packet(self, pkt):
         now = pkt.get("ts", time.time())
         pkt["ts"] = now
         self.packets.append(pkt)
 
-        # 15 seconds se purane packets ko memory space buffer se clear kar rahe hain
+        # Remove packets older than 15 seconds from the memory buffer
         self.packets = [p for p in self.packets if now - p["ts"] <= 15]
 
         found_alerts = []
@@ -62,7 +62,7 @@ class DetectionEngine:
         if not sip:
             return found_alerts
 
-        # RULE 1: Port Scan checks - Kisi source IP ne multiple ports scan kiye hain ya nahi
+        # RULE 1: Port Scan checks - Check if a source IP has scanned multiple ports
         matching_pkts = [
             p for p in self.packets
             if p.get("source_ip") == sip and now - p["ts"] <= PORT_SCAN_SEC
@@ -84,7 +84,7 @@ class DetectionEngine:
                 "description": f"Port Scan: {len(unique_ports)} ports probed from {sip} within {PORT_SCAN_SEC}s.",
             })
 
-        # RULE 2: SYN Flood checks - Connection backlog exhaust karne ke liye high rate SYN traffic
+        # RULE 2: SYN Flood checks - Check for high-rate SYN traffic targeting destination IP/ports
         syn_pkts = [
             p for p in matching_pkts
             if p.get("protocol") == "TCP" and "S" in str(p.get("flags", "")) and "A" not in str(p.get("flags", ""))
@@ -108,17 +108,17 @@ class DetectionEngine:
 
         return found_alerts
 
-    # Login logs check karta hai alert trigger karne ke liye
+    # Evaluates login attempt events to trigger brute force alerts
     def process_login_event(self, login_evt):
         now = login_evt.get("ts", time.time())
         login_evt["ts"] = now
         self.logins.append(login_evt)
 
-        # Purane records ko history se delete kar rahe hain brute force validation ke liye
+        # Remove historical login records older than the brute force window
         self.logins = [e for e in self.logins if now - e["ts"] <= BRUTE_FORCE_SEC]
 
         found_alerts = []
-        # Agar logon status 'failed' hai toh analyze karenge brute force scenario
+        # Analyze brute force scenarios only for failed login attempts
         if login_evt.get("status") == "failed":
             sip = login_evt.get("source_ip")
             srv = login_evt.get("service", "SSH")
@@ -128,7 +128,7 @@ class DetectionEngine:
                 and e.get("status") == "failed" and now - e["ts"] <= BRUTE_FORCE_SEC
             ]
 
-            # Agar specified window me limit cross hui hai toh login brute force alert banayenge
+            # Generate brute force alert if failure threshold is met
             if len(failures) >= BRUTE_FORCE_LIMIT:
                 score = SCORES["BRUTE_FORCE"]
                 port_num = login_evt.get("port", 22)

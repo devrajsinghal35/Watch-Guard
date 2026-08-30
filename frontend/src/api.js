@@ -1,40 +1,40 @@
-// Yeh function stats data load karta hai Flask server se
+// Fetch summary stats data from the Flask server
 export async function fetchStats() {
   const r = await fetch('/api/stats');
   return r.json();
 }
 
-// Yeh function security alerts fetch karta hai backend db se
+// Fetch security alerts from the backend database
 export async function fetchAlerts() {
   const r = await fetch('/api/alerts');
   return r.json();
 }
 
-// Yeh function maximum threat scores ke according sorted alerts list fetch karta hai
+// Fetch ranked alerts sorted by threat score in descending order
 export async function fetchRankedAlerts() {
   const r = await fetch('/api/alerts/ranked');
   return r.json();
 }
 
-// Yeh function live capture packets metadata return karta hai
+// Fetch live captured network packet metadata
 export async function fetchLiveNetwork() {
   const r = await fetch('/api/network/live');
   return r.json();
 }
 
-// Yeh function system mode (Live vs Demo) check karta hai
+// Get the current system mode (Live vs Demo)
 export async function fetchMode() {
   const r = await fetch('/api/mode');
   return r.json();
 }
 
-// Yeh function toggle request bhejta hai sniffer start/stop karne ke liye
+// Toggle the system mode and start/stop the background sniffer thread
 export async function toggleMode() {
   const r = await fetch('/api/mode/toggle', { method: 'POST' });
   return r.json();
 }
 
-// Yeh function demo endpoints trigger karta hai fake attacks inject karne ke liye
+// Trigger simulated synthetic attacks in demo mode
 export async function triggerDemoAttack(attackType) {
   const r = await fetch('/api/demo/trigger', {
     method: 'POST',
@@ -44,7 +44,7 @@ export async function triggerDemoAttack(attackType) {
   return r.json();
 }
 
-// Yeh function rule analysis form data submit karta hai login patterns check karne ke liye
+// Submit login form payload to analyze the threat/risk level
 export async function analyzeLogin(payload) {
   const r = await fetch('/api/login/analyze', {
     method: 'POST',
@@ -54,7 +54,7 @@ export async function analyzeLogin(payload) {
   return r.json();
 }
 
-// Yeh function backend me 50,000+ demo network events generate seed request bhejta hai
+// Request the backend to instantly seed 50,000+ mock packets and alerts
 export async function seedDemoData() {
   const r = await fetch('/api/demo/seed', { method: 'POST' });
   return r.json();
