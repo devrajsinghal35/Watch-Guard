@@ -56,8 +56,8 @@ class DetectionEngine:
         self.packets = [p for p in self.packets if now - p["ts"] <= 15]
 
         found_alerts = []
-        sip = pkt.get("src_ip")
-        dip = pkt.get("dst_ip")
+        sip = pkt.get("source_ip")
+        dip = pkt.get("destination_ip")
 
         if not sip:
             return found_alerts
@@ -65,9 +65,9 @@ class DetectionEngine:
         # RULE 1: Port Scan checks - Kisi source IP ne multiple ports scan kiye hain ya nahi
         matching_pkts = [
             p for p in self.packets
-            if p.get("src_ip") == sip and now - p["ts"] <= PORT_SCAN_SEC
+            if p.get("source_ip") == sip and now - p["ts"] <= PORT_SCAN_SEC
         ]
-        unique_ports = {p.get("dst_port") for p in matching_pkts if p.get("dst_port")}
+        unique_ports = {p.get("destination_port") for p in matching_pkts if p.get("destination_port")}
         
         if len(unique_ports) >= PORT_SCAN_LIMIT:
             score = SCORES["PORT_SCAN"]
@@ -77,29 +77,29 @@ class DetectionEngine:
                 "severity": SEVERITIES["PORT_SCAN"],
                 "threat_score": score,
                 "source_ip": sip,
-                "source_port": pkt.get("src_port", 0),
+                "source_port": pkt.get("source_port", 0),
                 "destination_ip": dip or "192.168.1.1",
-                "destination_port": pkt.get("dst_port", 80),
-                "protocol": pkt.get("proto", "TCP"),
+                "destination_port": pkt.get("destination_port", 80),
+                "protocol": pkt.get("protocol", "TCP"),
                 "description": f"Port Scan: {len(unique_ports)} ports probed from {sip} within {PORT_SCAN_SEC}s.",
             })
 
         # RULE 2: SYN Flood checks - Connection backlog exhaust karne ke liye high rate SYN traffic
         syn_pkts = [
             p for p in matching_pkts
-            if p.get("proto") == "TCP" and "S" in str(p.get("flags", "")) and "A" not in str(p.get("flags", ""))
+            if p.get("protocol") == "TCP" and "S" in str(p.get("flags", "")) and "A" not in str(p.get("flags", ""))
             and now - p["ts"] <= SYN_FLOOD_SEC
         ]
         if len(syn_pkts) >= SYN_FLOOD_LIMIT:
             score = SCORES["SYN_FLOOD"]
-            target_p = pkt.get("dst_port", 443)
+            target_p = pkt.get("destination_port", 443)
             found_alerts.append({
                 "ts": now,
                 "alert_type": "SYN_FLOOD",
                 "severity": SEVERITIES["SYN_FLOOD"],
                 "threat_score": score,
                 "source_ip": sip,
-                "source_port": pkt.get("src_port", 0),
+                "source_port": pkt.get("source_port", 0),
                 "destination_ip": dip or "192.168.1.1",
                 "destination_port": target_p,
                 "protocol": "TCP",

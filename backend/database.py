@@ -150,6 +150,26 @@ class Database:
                 ),
             )
 
+    # Batch insert helper for generating 50,000+ packets instantly
+    def insert_network_events_batch(self, pkts):
+        with self._connect() as conn:
+            conn.executemany(
+                """INSERT INTO network_events (ts, source_ip, source_port, destination_ip, destination_port, protocol, length)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                [
+                    (
+                        p.get("ts", time.time()),
+                        p["source_ip"],
+                        p["source_port"],
+                        p["destination_ip"],
+                        p["destination_port"],
+                        p["protocol"],
+                        p.get("length", 64),
+                    )
+                    for p in pkts
+                ]
+            )
+
     # Real time network packets fetch helper taaki UI updates instantly
     def get_live_network(self, limit=50):
         sql = "SELECT * FROM network_events ORDER BY ts DESC LIMIT ?"

@@ -53,3 +53,9 @@ export async function analyzeLogin(payload) {
   });
   return r.json();
 }
+
+// Yeh function backend me 50,000+ demo network events generate seed request bhejta hai
+export async function seedDemoData() {
+  const r = await fetch('/api/demo/seed', { method: 'POST' });
+  return r.json();
+}

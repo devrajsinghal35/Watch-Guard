@@ -2,7 +2,7 @@ import React from 'react';
 import { Zap, Play, Wifi, WifiOff } from 'lucide-react';
 
 // Sentry header navigation panel jo status details manage karta hai
-export default function Header({ demoMode, onToggleMode, onTriggerAttack, apiOnline }) {
+export default function Header({ demoMode, onToggleMode, onTriggerAttack, apiOnline, onSeedDemoData }) {
   return (
     <header className="header">
       <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -31,28 +31,15 @@ export default function Header({ demoMode, onToggleMode, onTriggerAttack, apiOnl
           {demoMode ? '● DEMO MODE' : '⚡ LIVE MODE'}
         </button>
 
-        {/* Demo mode options show hote hain agar state active ho */}
+        {/* In Demo Mode, show the Seed 50k Packets option */}
         {demoMode && (
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button
-              className="btn-demo-trigger"
-              onClick={() => onTriggerAttack('PORT_SCAN')}
-            >
-              <Play size={12} /> Port Scan
-            </button>
-            <button
-              className="btn-demo-trigger"
-              onClick={() => onTriggerAttack('SYN_FLOOD')}
-            >
-              <Play size={12} /> SYN Flood
-            </button>
-            <button
-              className="btn-demo-trigger"
-              onClick={() => onTriggerAttack('BRUTE_FORCE')}
-            >
-              <Play size={12} /> Brute Force
-            </button>
-          </div>
+          <button
+            className="btn-capture"
+            style={{ background: 'var(--accent)', color: '#ffffff' }}
+            onClick={onSeedDemoData}
+          >
+            <Play size={14} /> Seed 50k Packets
+          </button>
         )}
       </div>
     </header>

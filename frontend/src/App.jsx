@@ -10,6 +10,7 @@ import {
   fetchMode,
   toggleMode,
   triggerDemoAttack,
+  seedDemoData,
 } from './api';
 import './App.css';
 
@@ -90,6 +91,20 @@ export default function App() {
     }
   };
 
+  // Seed demo data helper callback
+  const handleSeedDemoData = async () => {
+    try {
+      addToast('⌛ Generating 50,000+ packets...', 'info');
+      const res = await seedDemoData();
+      if (res.success) {
+        addToast(`✅ Seeded ${res.packets_seeded.toLocaleString()} packets & ${res.alerts_seeded} alerts!`, 'success');
+        refreshData();
+      }
+    } catch (err) {
+      addToast('Failed to seed demo data.', 'error');
+    }
+  };
+
   return (
     <div>
       <Header
@@ -97,6 +112,7 @@ export default function App() {
         onToggleMode={handleToggleMode}
         onTriggerAttack={handleTriggerAttack}
         apiOnline={apiOnline}
+        onSeedDemoData={handleSeedDemoData}
       />
 
       <main className="app-container">

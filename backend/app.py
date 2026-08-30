@@ -8,7 +8,6 @@ from flask_cors import CORS
 from backend.database import Database
 from backend.detector import DetectionEngine
 from backend.capture import PacketCapturer
-from backend.ml_detector import extract_login_features, predict_anomaly
 
 # Backend and DB paths define kar rahe hain
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -94,30 +93,6 @@ def new_login_event():
     db.insert_login_event(evt)
 
     new_alerts = detector.process_login_event(evt)
-    
-    # ML Anomaly Detection Layer
-    # Use existing database to get history, minus the current event we just inserted
-    history = db.get_login_history_by_ip(evt["source_ip"])
-    # Exclude the current event from history (it will be the last one since we just inserted it)
-    history = [h for h in history if h["ts"] != evt["ts"]]
-    
-    features = extract_login_features(evt, history)
-    ml_threat_score, is_anomaly = predict_anomaly(features)
-    
-    if is_anomaly:
-        ml_alert = {
-            "ts": evt["ts"],
-            "alert_type": "ML_LOGIN_ANOMALY",
-            "severity": "HIGH" if ml_threat_score >= 70 else "MEDIUM",
-            "threat_score": ml_threat_score,
-            "source_ip": evt["source_ip"],
-            "source_port": 0,
-            "destination_ip": "192.168.1.1",
-            "destination_port": evt["port"],
-            "protocol": "TCP",
-            "description": f"ML Anomaly Detected: Unusual login pattern from {evt['source_ip']} (Model Score: {ml_threat_score}/100).",
-        }
-        new_alerts.append(ml_alert)
 
     for a in new_alerts:
         db.insert_alert(a)
@@ -204,7 +179,7 @@ def trigger_demo_event():
         dst = "192.168.1.10"
         ports = [21, 22, 23, 25, 53, 80, 110, 139, 443, 3389, 8080, 8443]
         for p in ports:
-            pkt = {"ts": ts, "src_ip": src, "src_port": random.randint(49152, 65535), "dst_ip": dst, "dst_port": p, "proto": "TCP", "flags": "S", "length": 60}
+            pkt = {"ts": ts, "source_ip": src, "source_port": random.randint(49152, 65535), "destination_ip": dst, "destination_port": p, "protocol": "TCP", "flags": "S", "length": 60}
             db.insert_network_event(pkt)
             res = detector.process_packet(pkt)
             triggered.extend(res)
@@ -214,7 +189,7 @@ def trigger_demo_event():
         dst = "192.168.1.20"
         port = 443
         for _ in range(55):
-            pkt = {"ts": ts, "src_ip": src, "src_port": random.randint(49152, 65535), "dst_ip": dst, "dst_port": port, "proto": "TCP", "flags": "S", "length": 54}
+            pkt = {"ts": ts, "source_ip": src, "source_port": random.randint(49152, 65535), "destination_ip": dst, "destination_port": port, "protocol": "TCP", "flags": "S", "length": 54}
             db.insert_network_event(pkt)
             res = detector.process_packet(pkt)
             triggered.extend(res)
@@ -239,5 +214,87 @@ def trigger_demo_event():
         "alerts": triggered
     })
 
+# High-speed data seeding endpoint for generating 50,000+ packets instantly
+@app.route("/api/demo/seed", methods=["POST"])
+def seed_demo_data():
+    ts = time.time()
+    batch_size = 50250
+    pkts = []
+    
+    # Pre-generate 50,250 packets in memory
+    for i in range(batch_size):
+        # Slightly randomized IPs/ports to make it look realistic
+        src = f"192.168.1.{random.randint(10, 250)}"
+        dst = f"192.168.1.{random.randint(2, 5)}"
+        sport = random.choice([80, 443, 22, 53, 3389] + list(range(49152, 65535, 17)))
+        dport = random.choice([80, 443, 22, 53, 3389])
+        proto = random.choice(["TCP", "UDP"])
+        length = random.randint(40, 1500)
+        
+        pkts.append({
+            "ts": ts - (batch_size - i) * 0.05, # Spaced out timestamps
+            "source_ip": src,
+            "source_port": sport,
+            "destination_ip": dst,
+            "destination_port": dport,
+            "protocol": proto,
+            "length": length
+        })
+
+    # Batch insert network events
+    db.insert_network_events_batch(pkts)
+
+    # Insert a few high-quality demonstration alerts
+    demo_alerts = [
+        {
+            "ts": ts - 30,
+            "alert_type": "SYN_FLOOD",
+            "severity": "CRITICAL",
+            "threat_score": 90,
+            "source_ip": "192.168.1.188",
+            "source_port": 54321,
+            "destination_ip": "192.168.1.3",
+            "destination_port": 443,
+            "protocol": "TCP",
+            "description": "SYN Flood: High rate of TCP SYN packets (120 pkts/5s) from 192.168.1.188 targeting 192.168.1.3:443.",
+            "status": "NEW"
+        },
+        {
+            "ts": ts - 90,
+            "alert_type": "PORT_SCAN",
+            "severity": "HIGH",
+            "threat_score": 70,
+            "source_ip": "192.168.1.105",
+            "source_port": 39485,
+            "destination_ip": "192.168.1.4",
+            "destination_port": 80,
+            "protocol": "TCP",
+            "description": "Port Scan: 18 ports probed from 192.168.1.105 within 10s.",
+            "status": "NEW"
+        },
+        {
+            "ts": ts - 300,
+            "alert_type": "BRUTE_FORCE",
+            "severity": "HIGH",
+            "threat_score": 80,
+            "source_ip": "192.168.1.201",
+            "source_port": 0,
+            "destination_ip": "192.168.1.1",
+            "destination_port": 22,
+            "protocol": "TCP",
+            "description": "SSH Brute Force: 12 failed logins from 192.168.1.201 targeting 'root' on port 22.",
+            "status": "NEW"
+        }
+    ]
+
+    for a in demo_alerts:
+        db.insert_alert(a)
+
+    return jsonify({
+        "success": True,
+        "packets_seeded": batch_size,
+        "alerts_seeded": len(demo_alerts)
+    })
+
 if __name__ == "__main__":
-    app.run(debug=True, port=5050)
+    app.run(debug=True, port=8081)

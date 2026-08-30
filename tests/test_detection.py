@@ -11,11 +11,11 @@ def test_port_scan_detection():
     for port in range(1, 11):
         pkt = {
             "ts": now,
-            "src_ip": sip,
-            "src_port": 50000 + port,
-            "dst_ip": dip,
-            "dst_port": port,
-            "proto": "TCP",
+            "source_ip": sip,
+            "source_port": 50000 + port,
+            "destination_ip": dip,
+            "destination_port": port,
+            "protocol": "TCP",
             "flags": "S",
             "length": 60,
         }
@@ -38,11 +38,11 @@ def test_syn_flood_detection():
     for _ in range(50):
         pkt = {
             "ts": now,
-            "src_ip": sip,
-            "src_port": 49152,
-            "dst_ip": dip,
-            "dst_port": 443,
-            "proto": "TCP",
+            "source_ip": sip,
+            "source_port": 49152,
+            "destination_ip": dip,
+            "destination_port": 443,
+            "protocol": "TCP",
             "flags": "S",
             "length": 54,
         }
