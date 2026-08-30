@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://sentry-backend-production.onrender.com/api/:path*"
+      "destination": "https://sentry-backend-334g.onrender.com/api/:path*"
     },
     {
       "source": "/(.*)",
