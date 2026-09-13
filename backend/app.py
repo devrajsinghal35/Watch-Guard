@@ -37,7 +37,7 @@ def sniffer_worker():
                     db.insert_alert(a)
         except Exception as e:
             print("Sniffer worker error:", e)
-        time.sleep(0.5)
+        time.sleep(0.1)
 
 # API status endpoint to check server health
 @app.route("/")
@@ -164,8 +164,8 @@ def toggle_system_mode():
             SNIFFER_THREAD.start()
     else:
         SNIFFER_RUNNING = False
-        # Automatically seed 50,000+ sample demo packets when switching to Demo Mode
-        seed_demo_data()
+        # Asynchronously seed demo packets in background thread so HTTP response is instant
+        threading.Thread(target=seed_demo_data, daemon=True).start()
 
     return jsonify({"success": True, "demo_mode": IS_DEMO_MODE, "label": "DEMO MODE" if IS_DEMO_MODE else "LIVE MODE"})
 
@@ -252,7 +252,7 @@ def trigger_demo_event():
 @app.route("/api/demo/seed", methods=["POST"])
 def seed_demo_data():
     ts = time.time()
-    batch_size = 50250
+    batch_size = 5000
     pkts = []
     
     # Pre-generate 50,250 packets in memory
