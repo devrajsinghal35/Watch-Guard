@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: sentry-backend
+    name: watch-guard-backend
     env: python
     plan: free
     buildCommand: pip install -r backend/requirements.txt

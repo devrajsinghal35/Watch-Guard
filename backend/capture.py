@@ -3,7 +3,7 @@ import logging
 import random
 
 # Logger setup to print debug logs
-logger = logging.getLogger("sentry.capture")
+logger = logging.getLogger("watchguard.capture")
 
 class PacketCapturer:
     # Constructor to initialize sniffer state

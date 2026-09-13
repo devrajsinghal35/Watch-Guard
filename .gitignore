@@ -37,7 +37,7 @@ env/
 
 # Databases & Local Runtime Data
 *.db
-backend/sentry.db
+backend/watch_guard.db
 
 # Node dependencies & web builds
 node_modules/

@@ -83,7 +83,7 @@ Base: `http://127.0.0.1:5050`
 ## Project Structure
 
 ```text
-sentry_final/
+watch_guard/
 ├── backend/
 │   ├── app.py
 │   ├── detector.py

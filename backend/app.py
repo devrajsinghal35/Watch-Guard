@@ -11,7 +11,7 @@ from backend.capture import PacketCapturer
 
 # Define backend and database paths
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH = os.path.join(BASE_DIR, "backend", "sentry.db")
+DB_PATH = os.path.join(BASE_DIR, "backend", "watch_guard.db")
 
 app = Flask(__name__)
 CORS(app) # Enable CORS to allow requests from the React frontend
