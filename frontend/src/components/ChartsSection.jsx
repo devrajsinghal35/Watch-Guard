@@ -86,15 +86,15 @@ export default function ChartsSection({ stats, alerts, networkEvents }) {
     return date.toLocaleTimeString([], { hour12: false, minute: '2-digit', second: '2-digit' });
   });
 
-  const timelineLengths = recentEvents.map((e) => e.length || 60);
+  const timelineLengths = recentEvents.map((e) => e.length || 0);
 
   const lineData = {
-    labels: timelineLabels.length > 0 ? timelineLabels : ['00:00', '00:05', '00:10', '00:15', '00:20'],
+    labels: timelineLabels.length > 0 ? timelineLabels : ['No Data'],
     datasets: [
       {
         fill: true,
         label: 'Packet Size (Bytes)',
-        data: timelineLengths.length > 0 ? timelineLengths : [64, 128, 512, 256, 1024],
+        data: timelineLengths.length > 0 ? timelineLengths : [0],
         borderColor: '#38bdf8',
         backgroundColor: 'rgba(56, 189, 248, 0.12)',
         tension: 0.35,
@@ -143,8 +143,8 @@ export default function ChartsSection({ stats, alerts, networkEvents }) {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5);
 
-  const barLabels = sortedIPs.length > 0 ? sortedIPs.map(([ip]) => ip) : ['192.168.1.188', '192.168.1.105', '192.168.1.201'];
-  const barValues = sortedIPs.length > 0 ? sortedIPs.map(([, cnt]) => cnt) : [5, 3, 2];
+  const barLabels = sortedIPs.length > 0 ? sortedIPs.map(([ip]) => ip) : ['No Threat Sources'];
+  const barValues = sortedIPs.length > 0 ? sortedIPs.map(([, cnt]) => cnt) : [0];
 
   const barData = {
     labels: barLabels,

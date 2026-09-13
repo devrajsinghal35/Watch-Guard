@@ -1,37 +1,47 @@
-const API_BASE = 'http://127.0.0.1:5050';
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+
+function getUrl(path) {
+  if (API_BASE) {
+    if (API_BASE.endsWith('/api') && path.startsWith('/api')) {
+      return `${API_BASE}${path.substring(4)}`;
+    }
+    return `${API_BASE}${path}`;
+  }
+  return path;
+}
 
 export async function fetchStats() {
-  const r = await fetch(`${API_BASE}/api/stats`);
+  const r = await fetch(getUrl('/api/stats'));
   return r.json();
 }
 
 export async function fetchAlerts() {
-  const r = await fetch(`${API_BASE}/api/alerts`);
+  const r = await fetch(getUrl('/api/alerts'));
   return r.json();
 }
 
 export async function fetchRankedAlerts() {
-  const r = await fetch(`${API_BASE}/api/alerts/ranked`);
+  const r = await fetch(getUrl('/api/alerts/ranked'));
   return r.json();
 }
 
 export async function fetchLiveNetwork() {
-  const r = await fetch(`${API_BASE}/api/network/live`);
+  const r = await fetch(getUrl('/api/network/live'));
   return r.json();
 }
 
 export async function fetchMode() {
-  const r = await fetch(`${API_BASE}/api/mode`);
+  const r = await fetch(getUrl('/api/mode'));
   return r.json();
 }
 
 export async function toggleMode() {
-  const r = await fetch(`${API_BASE}/api/mode/toggle`, { method: 'POST' });
+  const r = await fetch(getUrl('/api/mode/toggle'), { method: 'POST' });
   return r.json();
 }
 
 export async function triggerDemoAttack(attackType) {
-  const r = await fetch(`${API_BASE}/api/demo/trigger`, {
+  const r = await fetch(getUrl('/api/demo/trigger'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ attack_type: attackType }),
@@ -40,7 +50,7 @@ export async function triggerDemoAttack(attackType) {
 }
 
 export async function analyzeLogin(payload) {
-  const r = await fetch(`${API_BASE}/api/login/analyze`, {
+  const r = await fetch(getUrl('/api/login/analyze'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -49,6 +59,6 @@ export async function analyzeLogin(payload) {
 }
 
 export async function seedDemoData() {
-  const r = await fetch(`${API_BASE}/api/demo/seed`, { method: 'POST' });
+  const r = await fetch(getUrl('/api/demo/seed'), { method: 'POST' });
   return r.json();
 }
