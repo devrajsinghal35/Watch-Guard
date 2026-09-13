@@ -177,6 +177,13 @@ class Database:
             res = conn.execute(sql, [limit]).fetchall()
         return [dict(r) for r in res]
 
+    # Wipe all captured data and stored alerts for a fresh system reset
+    def reset_all(self):
+        with self._connect() as conn:
+            conn.execute("DELETE FROM alerts")
+            conn.execute("DELETE FROM login_events")
+            conn.execute("DELETE FROM network_events")
+
     # Calculate aggregate statistics for the dashboard UI cards
     def get_stats(self):
         with self._connect() as conn:

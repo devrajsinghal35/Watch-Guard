@@ -169,6 +169,30 @@ def toggle_system_mode():
 
     return jsonify({"success": True, "demo_mode": IS_DEMO_MODE, "label": "DEMO MODE" if IS_DEMO_MODE else "LIVE MODE"})
 
+# Reset database, disable demo mode, and start fresh live packet capture
+@app.route("/api/reset", methods=["POST"])
+def reset_system():
+    global IS_DEMO_MODE, SNIFFER_RUNNING, SNIFFER_THREAD
+    # 1. Clear database completely
+    db.reset_all()
+    detector.login_failures.clear()
+    
+    # 2. Force Live Mode
+    IS_DEMO_MODE = False
+    
+    # 3. Ensure live sniffer worker is active
+    if not SNIFFER_RUNNING:
+        SNIFFER_RUNNING = True
+        SNIFFER_THREAD = threading.Thread(target=sniffer_worker, daemon=True)
+        SNIFFER_THREAD.start()
+        
+    return jsonify({
+        "success": True,
+        "message": "System reset successfully. Switched to Live Mode and started fresh packet capture.",
+        "demo_mode": False,
+        "label": "LIVE MODE"
+    })
+
 # Start background sniffer worker by default for Live Mode
 if not IS_DEMO_MODE and not SNIFFER_RUNNING:
     SNIFFER_RUNNING = True

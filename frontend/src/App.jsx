@@ -13,6 +13,7 @@ import {
   toggleMode,
   triggerDemoAttack,
   seedDemoData,
+  resetSystem,
 } from './api';
 import './App.css';
 
@@ -73,6 +74,20 @@ export default function App() {
     }
   };
 
+  const handleResetSystem = async () => {
+    try {
+      addToast('🧹 Resetting system & starting fresh live capture...', 'info');
+      const res = await resetSystem();
+      if (res.success) {
+        setDemoMode(false);
+        addToast('✅ Demo data cleared. Live Mode packet sniffing active!', 'success');
+        refreshData();
+      }
+    } catch (err) {
+      addToast('Failed to reset system capture.', 'error');
+    }
+  };
+
   const handleTriggerAttack = async (attackType) => {
     try {
       const res = await triggerDemoAttack(attackType);
@@ -105,10 +120,8 @@ export default function App() {
       <Header
         demoMode={demoMode}
         onToggleMode={handleToggleMode}
-        onTriggerAttack={handleTriggerAttack}
+        onResetSystem={handleResetSystem}
         apiOnline={apiOnline}
-        onSeedDemoData={handleSeedDemoData}
-        onOpenTriage={() => setTriageModalOpen(true)}
       />
 
       <main className="app-container">

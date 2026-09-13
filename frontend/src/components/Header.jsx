@@ -1,13 +1,11 @@
 import React from 'react';
-import { Shield, Zap, Play, Wifi, WifiOff, Terminal } from 'lucide-react';
+import { Shield, Zap, Wifi, WifiOff, RotateCcw } from 'lucide-react';
 
 export default function Header({
   demoMode,
   onToggleMode,
-  onTriggerAttack,
+  onResetSystem,
   apiOnline,
-  onSeedDemoData,
-  onOpenTriage,
 }) {
   return (
     <header className="header">
@@ -30,6 +28,16 @@ export default function Header({
           {apiOnline ? <Wifi size={13} /> : <WifiOff size={13} />}
           <span>{apiOnline ? 'API ONLINE' : 'DISCONNECTED'}</span>
         </div>
+
+        {/* System Reset Button */}
+        <button
+          className="btn-capture btn-reset"
+          onClick={onResetSystem}
+          title="Clear all demo data and start fresh live capture"
+        >
+          <RotateCcw size={14} />
+          RESET CAPTURE
+        </button>
 
         {/* Live Sniffing / Demo Mode toggle button */}
         <button

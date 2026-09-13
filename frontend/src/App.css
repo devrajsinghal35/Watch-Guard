@@ -204,6 +204,18 @@ body {
   color: #040911;
 }
 
+.btn-reset {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.btn-reset:hover {
+  background: rgba(239, 68, 68, 0.3);
+  color: #ffffff;
+  border-color: #ef4444;
+}
+
 .btn-seed {
   background: var(--accent);
   color: #ffffff;

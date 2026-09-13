@@ -62,3 +62,8 @@ export async function seedDemoData() {
   const r = await fetch(getUrl('/api/demo/seed'), { method: 'POST' });
   return r.json();
 }
+
+export async function resetSystem() {
+  const r = await fetch(getUrl('/api/reset'), { method: 'POST' });
+  return r.json();
+}
