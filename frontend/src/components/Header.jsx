@@ -1,28 +1,37 @@
 import React from 'react';
-import { Zap, Play, Wifi, WifiOff } from 'lucide-react';
+import { Shield, Zap, Play, Wifi, WifiOff, Terminal } from 'lucide-react';
 
-// Sentry header navigation panel displaying system status and controls
-export default function Header({ demoMode, onToggleMode, onTriggerAttack, apiOnline, onSeedDemoData }) {
+export default function Header({
+  demoMode,
+  onToggleMode,
+  onTriggerAttack,
+  apiOnline,
+  onSeedDemoData,
+  onOpenTriage,
+}) {
   return (
     <header className="header">
-      <div style={{ display: 'flex', alignItems: 'center' }}>
+      <div className="brand-section">
         <div className="brand">
-          <span className="brand-dot"></span>
-          SENTRY SOC
+          <div className="brand-icon">
+            <Shield size={20} color="#38bdf8" />
+          </div>
+          <span className="brand-name">WATCH GUARD</span>
+          <span className="brand-badge">SOC 2.0</span>
         </div>
         <span className="header-subtitle">
-          Network Security Monitoring & SOC Alert Dashboard
+          Real-Time Threat Intelligence & Network Security Operations Console
         </span>
       </div>
 
       <div className="header-actions">
-        {/* API connection status status indicators */}
+        {/* Connection status indicator */}
         <div className={`status-badge ${apiOnline ? 'online' : 'offline'}`}>
-          {apiOnline ? <Wifi size={14} /> : <WifiOff size={14} />}
+          {apiOnline ? <Wifi size={13} /> : <WifiOff size={13} />}
           <span>{apiOnline ? 'API ONLINE' : 'DISCONNECTED'}</span>
         </div>
 
-        {/* Live Sniffing start / stop buttons */}
+        {/* Live Sniffing / Demo Mode toggle button */}
         <button
           className={`btn-capture ${demoMode ? 'active' : ''}`}
           onClick={onToggleMode}
@@ -30,17 +39,6 @@ export default function Header({ demoMode, onToggleMode, onTriggerAttack, apiOnl
           <Zap size={14} />
           {demoMode ? '● DEMO MODE' : '⚡ LIVE MODE'}
         </button>
-
-        {/* In Demo Mode, show the Seed 50k Packets option */}
-        {demoMode && (
-          <button
-            className="btn-capture"
-            style={{ background: 'var(--accent)', color: '#ffffff' }}
-            onClick={onSeedDemoData}
-          >
-            <Play size={14} /> Seed 50k Packets
-          </button>
-        )}
       </div>
     </header>
   );

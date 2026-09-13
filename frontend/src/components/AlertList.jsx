@@ -1,33 +1,72 @@
-import React from 'react';
-import { Flame } from 'lucide-react';
+import React, { useState } from 'react';
+import { Flame, Search, Filter } from 'lucide-react';
 
-// Formats epoch timestamps to a readable local time format for alert entries
 function fmtTime(ts) {
   if (!ts) return '—';
   return new Date(ts * 1000).toLocaleTimeString([], { hour12: false });
 }
 
-// Renders the list of security alerts
 export default function AlertList({ alerts }) {
-  // Sort the alerts array in descending order based on the threat score
+  const [filterSeverity, setFilterSeverity] = useState('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
+
   const sorted = [...(alerts || [])].sort((a, b) => b.threat_score - a.threat_score);
+
+  const filtered = sorted.filter((a) => {
+    const matchesSev =
+      filterSeverity === 'ALL' || (a.severity && a.severity.toUpperCase() === filterSeverity);
+    const matchesQuery =
+      !searchQuery ||
+      (a.source_ip && a.source_ip.includes(searchQuery)) ||
+      (a.alert_type && a.alert_type.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (a.description && a.description.toLowerCase().includes(searchQuery.toLowerCase()));
+
+    return matchesSev && matchesQuery;
+  });
 
   return (
     <div className="panel">
       <div className="panel-header">
         <div className="panel-title">
-          <Flame size={14} /> Security Alerts
+          <Flame size={14} color="var(--high)" /> Security Incidents & Alerts
+          <span className="count-badge">{filtered.length}</span>
+        </div>
+
+        {/* Filter and Search Bar */}
+        <div className="feed-controls">
+          <div className="search-input-wrapper">
+            <Search size={12} className="search-icon" />
+            <input
+              type="text"
+              placeholder="Search IP, alert type..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="search-input"
+            />
+          </div>
+
+          <div className="filter-pills">
+            <Filter size={11} className="filter-icon" />
+            {['ALL', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].map((sev) => (
+              <button
+                key={sev}
+                className={`filter-btn ${filterSeverity === sev ? 'active' : ''} ${sev.toLowerCase()}`}
+                onClick={() => setFilterSeverity(sev)}
+              >
+                {sev}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
+
       <div className="feed feed-ranked">
-        {/* Render placeholder message if there are no alerts */}
-        {sorted.length === 0 ? (
-          <div style={{ color: 'var(--text-dim)', padding: '30px 0', textAlign: 'center' }}>
-            No security alerts detected.
+        {filtered.length === 0 ? (
+          <div className="empty-feed">
+            No matching security alerts found.
           </div>
         ) : (
-          /* Map through and render each threat alert record */
-          sorted.map((a, idx) => {
+          filtered.map((a, idx) => {
             const sevClass = (a.severity || 'low').toLowerCase();
             return (
               <div key={idx} className={`feed-row ${sevClass}`}>
@@ -35,15 +74,13 @@ export default function AlertList({ alerts }) {
                 <div className={`feed-sev ${sevClass}`}>
                   {a.severity || 'LOW'} ({a.threat_score}/100)
                 </div>
-                <div style={{ fontSize: '11px', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600 }}>
+                <div className="feed-type">
                   {a.alert_type}
                 </div>
-                <div>
-                  {a.source_ip && (
-                    <span className="ip-link">{a.source_ip}</span>
-                  )}
+                <div className="feed-desc">
+                  {a.source_ip && <span className="ip-link">{a.source_ip}</span>}
                   {' — '}
-                  {a.description}
+                  <span>{a.description}</span>
                 </div>
                 <div>
                   <span className="badge-cold">{a.protocol || 'TCP'}</span>

@@ -25,16 +25,18 @@ IS_DEMO_MODE = False
 SNIFFER_THREAD = None
 SNIFFER_RUNNING = False
 
-# Background sniffer loop worker thread function
 def sniffer_worker():
     global SNIFFER_RUNNING
     while SNIFFER_RUNNING:
-        pkt = capturer.sniff_packet()
-        if pkt:
-            db.insert_network_event(pkt)
-            alerts = detector.process_packet(pkt)
-            for a in alerts:
-                db.insert_alert(a)
+        try:
+            pkt = capturer.sniff_packet()
+            if pkt:
+                db.insert_network_event(pkt)
+                alerts = detector.process_packet(pkt)
+                for a in alerts:
+                    db.insert_alert(a)
+        except Exception as e:
+            print("Sniffer worker error:", e)
         time.sleep(0.5)
 
 # API status endpoint to check server health
@@ -162,8 +164,16 @@ def toggle_system_mode():
             SNIFFER_THREAD.start()
     else:
         SNIFFER_RUNNING = False
+        # Automatically seed 50,000+ sample demo packets when switching to Demo Mode
+        seed_demo_data()
 
     return jsonify({"success": True, "demo_mode": IS_DEMO_MODE, "label": "DEMO MODE" if IS_DEMO_MODE else "LIVE MODE"})
+
+# Start background sniffer worker by default for Live Mode
+if not IS_DEMO_MODE and not SNIFFER_RUNNING:
+    SNIFFER_RUNNING = True
+    SNIFFER_THREAD = threading.Thread(target=sniffer_worker, daemon=True)
+    SNIFFER_THREAD.start()
 
 # Simulates custom synthetic network events in demo mode
 @app.route("/api/demo/trigger", methods=["POST"])
@@ -297,4 +307,4 @@ def seed_demo_data():
     })
 
 if __name__ == "__main__":
-    app.run(debug=True, port=8081)
+    app.run(host="0.0.0.0", port=5050, debug=True)

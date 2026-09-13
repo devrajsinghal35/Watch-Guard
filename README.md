@@ -1,7 +1,7 @@
-# SENTRY
+# WATCH GUARD
 Lightweight SOC Alert Dashboard & Network Security Monitoring System
 
-SENTRY is a lightweight Network Security Monitoring (NSM) and SOC alert dashboard built with Python Flask, Scapy, SQLite, and React. It collects network packet metadata and authentication events, applies deterministic rule-based detection, stores alerts, and exposes them via a real-time dashboard.
+WATCH GUARD is a lightweight Network Security Monitoring (NSM) and SOC alert dashboard built with Python Flask, Scapy, SQLite, and React. It collects network packet metadata and authentication events, applies deterministic rule-based detection, stores alerts, and exposes them via a real-time dashboard.
 
 Intended for local security monitoring, testing, demonstrations, and learning.
 

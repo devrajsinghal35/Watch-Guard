@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
+import ChartsSection from './components/ChartsSection';
 import NetworkFeed from './components/NetworkFeed';
 import AlertList from './components/AlertList';
+import LoginTriageModal from './components/LoginTriageModal';
 import {
   fetchStats,
   fetchAlerts,
@@ -14,9 +16,7 @@ import {
 } from './api';
 import './App.css';
 
-// Main App component that manages the dashboard application state
 export default function App() {
-  // Application hooks state declarations
   const [stats, setStats] = useState(null);
   const [alerts, setAlerts] = useState([]);
   const [networkEvents, setNetworkEvents] = useState([]);
@@ -24,8 +24,8 @@ export default function App() {
   const [apiOnline, setApiOnline] = useState(false);
   const [toasts, setToasts] = useState([]);
   const [highlightNetwork, setHighlightNetwork] = useState(false);
+  const [triageModalOpen, setTriageModalOpen] = useState(false);
 
-  // Screen alerts and success notifications helper
   const addToast = (message, type = 'success') => {
     const id = Date.now() + Math.random();
     setToasts((prev) => [...prev, { id, message, type }]);
@@ -34,7 +34,6 @@ export default function App() {
     }, 4000);
   };
 
-  // Main callback function to retrieve and refresh data from the Flask backend
   const refreshData = useCallback(async () => {
     try {
       const [sRes, aRes, nRes, mRes] = await Promise.all([
@@ -55,46 +54,42 @@ export default function App() {
     }
   }, []);
 
-  // Set up polling mechanism to refresh dashboard data every 3 seconds
   useEffect(() => {
     refreshData();
     const interval = setInterval(refreshData, 3000);
     return () => clearInterval(interval);
   }, [refreshData]);
 
-  // Capture mode toggle callback handler
   const handleToggleMode = async () => {
     try {
       const res = await toggleMode();
       if (res.success) {
         setDemoMode(res.demo_mode);
-        addToast(`Switched to ${res.label}`, 'success');
+        addToast(`Switched Watch Guard to ${res.label}`, 'success');
         refreshData();
       }
     } catch (err) {
-      addToast('Failed to toggle mode.', 'error');
+      addToast('Failed to toggle system mode.', 'error');
     }
   };
 
-  // Trigger simulated attacks callback handler
   const handleTriggerAttack = async (attackType) => {
     try {
       const res = await triggerDemoAttack(attackType);
       if (res.success) {
-        addToast(`⚡ Triggered synthetic ${attackType} attack test!`, 'success');
+        addToast(`⚡ Watch Guard detected synthetic ${attackType} vector!`, 'success');
         setHighlightNetwork(true);
         setTimeout(() => setHighlightNetwork(false), 1500);
         refreshData();
       }
     } catch (err) {
-      addToast('Failed to trigger demo attack.', 'error');
+      addToast('Failed to trigger attack vector.', 'error');
     }
   };
 
-  // Seed demo data helper callback
   const handleSeedDemoData = async () => {
     try {
-      addToast('⌛ Generating 50,000+ packets...', 'info');
+      addToast('⌛ Seeding 50,000+ Watch Guard telemetry events...', 'info');
       const res = await seedDemoData();
       if (res.success) {
         addToast(`✅ Seeded ${res.packets_seeded.toLocaleString()} packets & ${res.alerts_seeded} alerts!`, 'success');
@@ -106,24 +101,38 @@ export default function App() {
   };
 
   return (
-    <div>
+    <div className="watch-guard-root">
       <Header
         demoMode={demoMode}
         onToggleMode={handleToggleMode}
         onTriggerAttack={handleTriggerAttack}
         apiOnline={apiOnline}
         onSeedDemoData={handleSeedDemoData}
+        onOpenTriage={() => setTriageModalOpen(true)}
       />
 
       <main className="app-container">
+        {/* Top Summary Metrics */}
         <Dashboard stats={stats} />
-        
+
+        {/* Dynamic Visualizations Grid */}
+        <ChartsSection stats={stats} alerts={alerts} networkEvents={networkEvents} />
+
+        {/* Live Feeds Grid */}
         <div className="grid-equal">
           <AlertList alerts={alerts} />
           <NetworkFeed events={networkEvents} highlighted={highlightNetwork} />
         </div>
       </main>
 
+      {/* Interactive Login Triage Modal */}
+      <LoginTriageModal
+        isOpen={triageModalOpen}
+        onClose={() => setTriageModalOpen(false)}
+        onAlertGenerated={refreshData}
+      />
+
+      {/* Toast Notification Stack */}
       <div className="toast-container">
         {toasts.map((t) => (
           <div key={t.id} className={`toast ${t.type}`}>
