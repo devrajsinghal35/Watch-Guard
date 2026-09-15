@@ -4,6 +4,11 @@ from contextlib import contextmanager
 
 # SQLite database table templates layout schemas
 SCHEMA_SQL = """
+PRAGMA journal_mode=WAL;
+PRAGMA synchronous=NORMAL;
+PRAGMA temp_store=MEMORY;
+PRAGMA cache_size=-64000;
+
 CREATE TABLE IF NOT EXISTS alerts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     ts REAL NOT NULL,
@@ -40,22 +45,26 @@ CREATE TABLE IF NOT EXISTS network_events (
     length INTEGER NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_alerts_ts ON alerts(ts);
-CREATE INDEX IF NOT EXISTS idx_alerts_score ON alerts(threat_score);
-CREATE INDEX IF NOT EXISTS idx_network_ts ON network_events(ts);
+CREATE INDEX IF NOT EXISTS idx_alerts_ts ON alerts(ts DESC);
+CREATE INDEX IF NOT EXISTS idx_alerts_score ON alerts(threat_score DESC, ts DESC);
+CREATE INDEX IF NOT EXISTS idx_alerts_sev ON alerts(severity);
+CREATE INDEX IF NOT EXISTS idx_network_ts ON network_events(ts DESC);
+CREATE INDEX IF NOT EXISTS idx_login_ts ON login_events(ts DESC);
 """
 
 class Database:
     # Database helper object that auto-initializes the schema tables
     def __init__(self, db_path):
         self.db_path = db_path
+        self._stats_cache = None
+        self._stats_cache_time = 0
         with self._connect() as conn:
             conn.executescript(SCHEMA_SQL)
 
-    # Helper manager to safely create SQLite connections with context handling
+    # Helper manager to safely create SQLite connections with context handling & busy timeout
     @contextmanager
     def _connect(self):
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=20.0)
         conn.row_factory = sqlite3.Row
         try:
             yield conn
@@ -63,8 +72,12 @@ class Database:
         finally:
             conn.close()
 
+    def invalidate_stats_cache(self):
+        self._stats_cache_time = 0
+
     # Save security alerts to the database
     def insert_alert(self, alert):
+        self.invalidate_stats_cache()
         with self._connect() as conn:
             cur = conn.execute(
                 """INSERT INTO alerts
@@ -113,6 +126,7 @@ class Database:
 
     # Log authentication events to the database
     def insert_login_event(self, evt):
+        self.invalidate_stats_cache()
         with self._connect() as conn:
             conn.execute(
                 """INSERT INTO login_events (ts, source_ip, username, service, port, status)
@@ -135,6 +149,7 @@ class Database:
 
     # Save general packet metadata details to the database
     def insert_network_event(self, pkt):
+        self.invalidate_stats_cache()
         with self._connect() as conn:
             conn.execute(
                 """INSERT INTO network_events (ts, source_ip, source_port, destination_ip, destination_port, protocol, length)
@@ -152,6 +167,9 @@ class Database:
 
     # Perform batch insertion for fast mock network data loading
     def insert_network_events_batch(self, pkts):
+        if not pkts:
+            return
+        self.invalidate_stats_cache()
         with self._connect() as conn:
             conn.executemany(
                 """INSERT INTO network_events (ts, source_ip, source_port, destination_ip, destination_port, protocol, length)
@@ -179,13 +197,18 @@ class Database:
 
     # Wipe all captured data and stored alerts for a fresh system reset
     def reset_all(self):
+        self.invalidate_stats_cache()
         with self._connect() as conn:
             conn.execute("DELETE FROM alerts")
             conn.execute("DELETE FROM login_events")
             conn.execute("DELETE FROM network_events")
 
-    # Calculate aggregate statistics for the dashboard UI cards
+    # Calculate aggregate statistics for the dashboard UI cards with 1.5s TTL caching
     def get_stats(self):
+        now = time.time()
+        if self._stats_cache and (now - self._stats_cache_time < 1.5):
+            return self._stats_cache
+
         with self._connect() as conn:
             total_alerts = conn.execute("SELECT COUNT(*) c FROM alerts").fetchone()["c"]
             total_events = conn.execute("SELECT COUNT(*) c FROM network_events").fetchone()["c"] + \
@@ -198,7 +221,7 @@ class Database:
             for row in conn.execute("SELECT severity, COUNT(*) c FROM alerts GROUP BY severity"):
                 levels[row["severity"]] = row["c"]
 
-        return {
+        res = {
             "total_alerts": total_alerts,
             "total_events": total_events,
             "avg_threat_score": round(avg_score, 1),
@@ -210,3 +233,7 @@ class Database:
                 "CRITICAL": levels.get("CRITICAL", 0),
             },
         }
+        self._stats_cache = res
+        self._stats_cache_time = now
+        return res
+

@@ -57,6 +57,7 @@ Base URL: `http://127.0.0.1:5050`
 
 | Method | Endpoint | Description |
 |---|---|---|
+| `GET` | `/api/dashboard/feed` | Consolidated high-performance dashboard telemetry feed (stats, alerts, network events, mode) |
 | `GET` | `/api/stats` | Summary dashboard metrics & severity counts |
 | `GET` | `/api/alerts` | Security alerts log history |
 | `GET` | `/api/alerts/ranked` | Alerts ordered by threat score (`DESC`) |

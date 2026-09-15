@@ -10,6 +10,11 @@ function getUrl(path) {
   return path;
 }
 
+export async function fetchDashboardFeed() {
+  const r = await fetch(getUrl('/api/dashboard/feed'));
+  return r.json();
+}
+
 export async function fetchStats() {
   const r = await fetch(getUrl('/api/stats'));
   return r.json();

@@ -27,14 +27,22 @@ SNIFFER_RUNNING = False
 
 def sniffer_worker():
     global SNIFFER_RUNNING
+    pkt_buffer = []
+    last_flush = time.time()
     while SNIFFER_RUNNING:
         try:
             pkt = capturer.sniff_packet()
             if pkt:
-                db.insert_network_event(pkt)
+                pkt_buffer.append(pkt)
                 alerts = detector.process_packet(pkt)
                 for a in alerts:
                     db.insert_alert(a)
+                
+                now = time.time()
+                if len(pkt_buffer) >= 5 or (now - last_flush >= 0.5):
+                    db.insert_network_events_batch(pkt_buffer)
+                    pkt_buffer.clear()
+                    last_flush = now
         except Exception as e:
             print("Sniffer worker error:", e)
         time.sleep(0.1)
@@ -46,6 +54,19 @@ def home():
         "status": "online",
         "service": "NIDS API",
         "mode": "DEMO" if IS_DEMO_MODE else "LIVE"
+    })
+
+# High-performance consolidated dashboard telemetry feed endpoint
+@app.route("/api/dashboard/feed")
+def dashboard_feed_endpoint():
+    return jsonify({
+        "success": True,
+        "data": {
+            "stats": db.get_stats(),
+            "alerts": db.get_alerts(limit=100),
+            "networkEvents": db.get_live_network(limit=50),
+            "demoMode": IS_DEMO_MODE,
+        }
     })
 
 # API summary metrics values calculate endpoint

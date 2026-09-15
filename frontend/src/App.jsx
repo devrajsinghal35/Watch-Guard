@@ -6,10 +6,7 @@ import NetworkFeed from './components/NetworkFeed';
 import AlertList from './components/AlertList';
 import LoginTriageModal from './components/LoginTriageModal';
 import {
-  fetchStats,
-  fetchAlerts,
-  fetchLiveNetwork,
-  fetchMode,
+  fetchDashboardFeed,
   toggleMode,
   triggerDemoAttack,
   seedDemoData,
@@ -37,19 +34,14 @@ export default function App() {
 
   const refreshData = useCallback(async () => {
     try {
-      const [sRes, aRes, nRes, mRes] = await Promise.all([
-        fetchStats(),
-        fetchAlerts(),
-        fetchLiveNetwork(),
-        fetchMode(),
-      ]);
-
-      if (sRes.success) setStats(sRes.data);
-      if (aRes.success) setAlerts(aRes.data || []);
-      if (nRes.success) setNetworkEvents(nRes.data || []);
-      if (mRes.success) setDemoMode(mRes.demo_mode);
-
-      setApiOnline(true);
+      const feedRes = await fetchDashboardFeed();
+      if (feedRes.success && feedRes.data) {
+        setStats(feedRes.data.stats);
+        setAlerts(feedRes.data.alerts || []);
+        setNetworkEvents(feedRes.data.networkEvents || []);
+        setDemoMode(feedRes.data.demoMode);
+        setApiOnline(true);
+      }
     } catch (err) {
       setApiOnline(false);
     }
