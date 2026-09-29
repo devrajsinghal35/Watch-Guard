@@ -142,7 +142,7 @@ class AICopilot:
 
     def _run_dynamic_simulation(self, alert_data):
         alert_type = alert_data.get('alert_type', 'UNKNOWN')
-        source_ip = alert_data.get('source_ip', '0.0.0.0')
+        source_ip = alert_data.get('source_ip', '0.0.0.0')  # nosec B104
         dest_ip = alert_data.get('destination_ip', '192.168.1.1')
         dest_port = alert_data.get('destination_port', 0)
         protocol = alert_data.get('protocol', 'TCP')

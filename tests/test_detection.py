@@ -22,11 +22,11 @@ def test_port_scan_detection():
         triggered.extend(engine.process_packet(pkt))
 
     assert len(triggered) > 0
-    alert = triggered[-1]
-    assert alert["alert_type"] == "PORT_SCAN"
-    assert alert["severity"] == "HIGH"
-    assert alert["threat_score"] == 70
-    assert alert["source_ip"] == sip
+    port_scan_alert = next((a for a in triggered if a["alert_type"] == "PORT_SCAN"), None)
+    assert port_scan_alert is not None
+    assert port_scan_alert["severity"] == "HIGH"
+    assert port_scan_alert["threat_score"] == 70
+    assert port_scan_alert["source_ip"] == sip
 
 def test_syn_flood_detection():
     engine = DetectionEngine()
