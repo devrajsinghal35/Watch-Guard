@@ -72,3 +72,12 @@ export async function resetSystem() {
   const r = await fetch(getUrl('/api/reset'), { method: 'POST' });
   return r.json();
 }
+
+export async function analyzeIncident(alertData) {
+  const r = await fetch(getUrl('/api/ai/analyze-incident'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(alertData),
+  });
+  return r.json();
+}

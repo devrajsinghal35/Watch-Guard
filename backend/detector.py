@@ -1,4 +1,5 @@
 import time
+from .dlp_engine import dlp_engine
 
 # Threshold parameters defining when detection alerts are triggered
 PORT_SCAN_LIMIT = 10
@@ -15,6 +16,7 @@ SCORES = {
     "PORT_SCAN": 70,
     "BRUTE_FORCE": 80,
     "SYN_FLOOD": 90,
+    "DLP_VIOLATION": 95,
     "NORMAL": 10,
 }
 
@@ -23,6 +25,7 @@ SEVERITIES = {
     "PORT_SCAN": "HIGH",
     "BRUTE_FORCE": "HIGH",
     "SYN_FLOOD": "CRITICAL",
+    "DLP_VIOLATION": "CRITICAL",
     "NORMAL": "LOW",
 }
 
@@ -105,6 +108,26 @@ class DetectionEngine:
                 "protocol": "TCP",
                 "description": f"SYN Flood: High rate of TCP SYN packets ({len(syn_pkts)} pkts/{SYN_FLOOD_SEC}s) from {sip} targeting {dip}:{target_p}.",
             })
+
+        # RULE 3: DLP Violation checks - Check for sensitive data in payload
+        payload = pkt.get("payload", "")
+        if payload:
+            dlp_violations = dlp_engine.scan_payload(payload)
+            if dlp_violations:
+                score = SCORES["DLP_VIOLATION"]
+                for v in dlp_violations:
+                    found_alerts.append({
+                        "ts": now,
+                        "alert_type": "DLP_VIOLATION",
+                        "severity": SEVERITIES["DLP_VIOLATION"],
+                        "threat_score": score,
+                        "source_ip": sip,
+                        "source_port": pkt.get("source_port", 0),
+                        "destination_ip": dip or "192.168.1.1",
+                        "destination_port": pkt.get("destination_port", 80),
+                        "protocol": pkt.get("protocol", "TCP"),
+                        "description": f"DLP Violation ({v['category']}): Found unencrypted sensitive data matching {v['redacted_match']}",
+                    })
 
         return found_alerts
 

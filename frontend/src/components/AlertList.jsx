@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Flame, Search, Filter } from 'lucide-react';
+import { Flame, Search, Filter, Bot, X } from 'lucide-react';
+import { analyzeIncident } from '../api';
 
 function fmtTime(ts) {
   if (!ts) return '—';
@@ -9,6 +10,8 @@ function fmtTime(ts) {
 export default function AlertList({ alerts }) {
   const [filterSeverity, setFilterSeverity] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [analyzingIndex, setAnalyzingIndex] = useState(null);
+  const [playbookData, setPlaybookData] = useState({});
 
   const sorted = [...(alerts || [])].sort((a, b) => b.threat_score - a.threat_score);
 
@@ -23,6 +26,27 @@ export default function AlertList({ alerts }) {
 
     return matchesSev && matchesQuery;
   });
+
+  const handleAnalyze = async (alert, idx) => {
+    setAnalyzingIndex(idx);
+    try {
+      const res = await analyzeIncident(alert);
+      if (res.success) {
+        setPlaybookData((prev) => ({ ...prev, [idx]: res.playbook }));
+      }
+    } catch (err) {
+      console.error("AI Analysis failed:", err);
+    }
+    setAnalyzingIndex(null);
+  };
+
+  const closePlaybook = (idx) => {
+    setPlaybookData((prev) => {
+      const newData = { ...prev };
+      delete newData[idx];
+      return newData;
+    });
+  };
 
   return (
     <div className="panel">
@@ -68,24 +92,86 @@ export default function AlertList({ alerts }) {
         ) : (
           filtered.map((a, idx) => {
             const sevClass = (a.severity || 'low').toLowerCase();
+            const isAnalyzing = analyzingIndex === idx;
+            const playbook = playbookData[idx];
+
             return (
-              <div key={idx} className={`feed-row ${sevClass}`}>
-                <div className="feed-time">{fmtTime(a.ts)}</div>
-                <div className={`feed-sev ${sevClass}`}>
-                  {a.severity || 'LOW'} ({a.threat_score}/100)
+              <React.Fragment key={idx}>
+                <div className={`feed-row ${sevClass}`}>
+                  <div className="feed-time">{fmtTime(a.ts)}</div>
+                  <div className={`feed-sev ${sevClass}`}>
+                    {a.severity || 'LOW'} ({a.threat_score}/100)
+                  </div>
+                  <div className="feed-type">
+                    {a.alert_type}
+                  </div>
+                  <div className="feed-desc">
+                    {a.source_ip && <span className="ip-link">{a.source_ip}</span>}
+                    {' — '}
+                    <span>{a.description}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <span className="badge-cold">{a.protocol || 'TCP'}</span>
+                    <button 
+                      className="ai-copilot-btn"
+                      onClick={() => handleAnalyze(a, idx)}
+                      disabled={isAnalyzing}
+                      style={{
+                        background: 'linear-gradient(90deg, #6366f1, #a855f7)',
+                        border: 'none',
+                        borderRadius: '4px',
+                        padding: '4px 8px',
+                        color: 'white',
+                        fontSize: '10px',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      <Bot size={12} />
+                      {isAnalyzing ? 'Analyzing...' : 'Ask AI'}
+                    </button>
+                  </div>
                 </div>
-                <div className="feed-type">
-                  {a.alert_type}
-                </div>
-                <div className="feed-desc">
-                  {a.source_ip && <span className="ip-link">{a.source_ip}</span>}
-                  {' — '}
-                  <span>{a.description}</span>
-                </div>
-                <div>
-                  <span className="badge-cold">{a.protocol || 'TCP'}</span>
-                </div>
-              </div>
+                {playbook && (
+                  <div className="ai-playbook-panel" style={{
+                    margin: '4px 16px 12px 16px',
+                    padding: '12px',
+                    background: 'rgba(99, 102, 241, 0.1)',
+                    borderLeft: '2px solid #a855f7',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    color: '#e2e8f0',
+                    position: 'relative'
+                  }}>
+                    <button 
+                      onClick={() => closePlaybook(idx)} 
+                      style={{ position: 'absolute', top: '8px', right: '8px', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
+                    >
+                      <X size={14} />
+                    </button>
+                    <div style={{ fontWeight: 'bold', color: '#a855f7', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Bot size={14} /> AI Copilot Analysis (Confidence: {playbook.confidence_score * 100}%)
+                    </div>
+                    <div style={{ marginBottom: '6px' }}><strong>Summary:</strong> {playbook.summary}</div>
+                    <div style={{ marginBottom: '6px' }}><strong>Root Cause:</strong> {playbook.root_cause}</div>
+                    <div style={{ marginBottom: '6px' }}><strong>Remediation Steps:</strong></div>
+                    <ul style={{ margin: '0 0 8px 20px', padding: '0' }}>
+                      {playbook.remediation_steps.map((step, sIdx) => <li key={sIdx}>{step}</li>)}
+                    </ul>
+                    {playbook.recommended_firewall_rule && (
+                      <div>
+                        <strong>Recommended Rule:</strong>
+                        <code style={{ display: 'block', background: '#0f172a', padding: '6px', borderRadius: '4px', marginTop: '4px', color: '#4ade80' }}>
+                          {playbook.recommended_firewall_rule}
+                        </code>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </React.Fragment>
             );
           })
         )}

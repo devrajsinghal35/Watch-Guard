@@ -2,6 +2,15 @@ import time
 import logging
 import random
 
+# Mock payloads for DLP testing
+MOCK_PAYLOADS = [
+    "GET /api/users HTTP/1.1\r\nHost: example.com",
+    "POST /login HTTP/1.1\r\nAuthorization: Bearer mysecrettoken1234567890abcdef",
+    "HTTP/1.1 200 OK\r\nX-Honeywell-Internal-Key: super-secret-key-123\r\n\r\n",
+    "Found user data: John Doe, SSN: 123-45-6789",
+    "Processing payment for CC: 4111222233334444"
+]
+
 # Logger setup to print debug logs
 logger = logging.getLogger("watchguard.capture")
 
@@ -30,4 +39,5 @@ class PacketCapturer:
             "protocol": proto,
             "flags": "S" if (proto == "TCP" and random.random() < 0.25) else ("PA" if proto == "TCP" else ""),
             "length": random.randint(54, 1460),
+            "payload": random.choice(MOCK_PAYLOADS) if random.random() < 0.1 else "",
         }

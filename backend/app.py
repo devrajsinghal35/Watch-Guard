@@ -8,6 +8,7 @@ from flask_cors import CORS
 from backend.database import Database
 from backend.detector import DetectionEngine
 from backend.capture import PacketCapturer
+from backend.ai_copilot import ai_copilot
 
 # Define backend and database paths
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -164,6 +165,19 @@ def analyze_login_attempt():
             "reason": msg,
             "alert": alert_obj
         }
+    })
+
+# AI GenAI Incident Analysis Endpoint
+@app.route("/api/ai/analyze-incident", methods=["POST"])
+def ai_analyze_incident():
+    payload = request.get_json(silent=True) or {}
+    if not payload:
+        return jsonify({"success": False, "error": "No alert data provided"}), 400
+    
+    analysis_result = ai_copilot.analyze_incident(payload)
+    return jsonify({
+        "success": True,
+        "playbook": analysis_result
     })
 
 # System active state mode fetch endpoint
