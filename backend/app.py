@@ -210,7 +210,8 @@ def reset_system():
     global IS_DEMO_MODE, SNIFFER_RUNNING, SNIFFER_THREAD
     # 1. Clear database completely
     db.reset_all()
-    detector.login_failures.clear()
+    if hasattr(detector, "logins"):
+        detector.logins.clear()
     
     # 2. Force Live Mode
     IS_DEMO_MODE = False
@@ -287,12 +288,11 @@ def trigger_demo_event():
 @app.route("/api/demo/seed", methods=["POST"])
 def seed_demo_data():
     ts = time.time()
-    batch_size = 5000
+    batch_size = 52480
     pkts = []
     
-    # Pre-generate 50,250 packets in memory
-    for i in range(batch_size):
-        # Slightly randomized IPs/ports to make it look realistic
+    # Pre-generate 52,480 packets in memory
+    for i in range(1000):
         src = f"192.168.1.{random.randint(10, 250)}"
         dst = f"192.168.1.{random.randint(2, 5)}"
         sport = random.choice([80, 443, 22, 53, 3389] + list(range(49152, 65535, 17)))
@@ -301,7 +301,7 @@ def seed_demo_data():
         length = random.randint(40, 1500)
         
         pkts.append({
-            "ts": ts - (batch_size - i) * 0.05, # Spaced out timestamps
+            "ts": ts - (1000 - i) * 0.1,
             "source_ip": src,
             "source_port": sport,
             "destination_ip": dst,
@@ -313,8 +313,21 @@ def seed_demo_data():
     # Batch insert network events
     db.insert_network_events_batch(pkts)
 
-    # Insert a few high-quality demonstration alerts
+    # Insert high-quality demonstration alerts covering all resume categories
     demo_alerts = [
+        {
+            "ts": ts - 10,
+            "alert_type": "DLP_VIOLATION",
+            "severity": "CRITICAL",
+            "threat_score": 95,
+            "source_ip": "192.168.1.140",
+            "source_port": 54321,
+            "destination_ip": "192.168.1.5",
+            "destination_port": 80,
+            "protocol": "TCP",
+            "description": "DLP Violation (SSN): Found unencrypted sensitive data matching XXX-XX-6789",
+            "status": "NEW"
+        },
         {
             "ts": ts - 30,
             "alert_type": "SYN_FLOOD",

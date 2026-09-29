@@ -7,11 +7,24 @@ try:
 except ImportError:
     OpenAI = None
 
+try:
+    import google.generativeai as genai
+except ImportError:
+    genai = None
+
 class AICopilot:
     def __init__(self):
         # Initialize OpenAI client if API key is available
-        self.api_key = os.environ.get("OPENAI_API_KEY")
-        self.client = OpenAI(api_key=self.api_key) if self.api_key and OpenAI else None
+        self.openai_api_key = os.environ.get("OPENAI_API_KEY")
+        self.openai_client = OpenAI(api_key=self.openai_api_key) if self.openai_api_key and OpenAI else None
+        
+        # Initialize Gemini client if API key is available
+        self.gemini_api_key = os.environ.get("GEMINI_API_KEY")
+        if self.gemini_api_key and genai:
+            genai.configure(api_key=self.gemini_api_key)
+            self.gemini_model = genai.GenerativeModel('gemini-1.5-flash', generation_config={"response_mime_type": "application/json"})
+        else:
+            self.gemini_model = None
 
     def get_service_name(self, port):
         port = int(port) if port else 0
@@ -24,18 +37,22 @@ class AICopilot:
 
     def analyze_incident(self, alert_data):
         """
-        Analyzes the incident using OpenAI API if a key is provided, otherwise falls back
+        Analyzes the incident using Gemini or OpenAI API if a key is provided, otherwise falls back
         to the highly contextual dynamic simulation.
         """
-        # If we have an OpenAI API key, use the real LLM!
-        if self.client:
+        # If we have a Gemini API key, use it!
+        if self.gemini_model:
+            return self._call_gemini_api(alert_data)
+            
+        # If we have an OpenAI API key, use it!
+        if self.openai_client:
             return self._call_openai_api(alert_data)
         
         # Otherwise, fall back to our advanced deterministic simulation
         return self._run_dynamic_simulation(alert_data)
 
-    def _call_openai_api(self, alert_data):
-        prompt = f"""
+    def _get_prompt(self, alert_data):
+        return f"""
         You are a senior SOC AI Analyst for Honeywell Watch-Guard. Analyze the following network security alert and provide a structured JSON remediation playbook.
 
         Alert Details:
@@ -56,8 +73,50 @@ class AICopilot:
         }}
         """
 
+    def _call_gemini_api(self, alert_data):
+        prompt = self._get_prompt(alert_data)
+        model_candidates = [
+            'gemini-flash-latest',
+            'gemini-3.5-flash',
+            'gemini-3.8-flash',
+            'gemma-4-26b-a4b-it',
+            'gemini-2.5-pro'
+        ]
+        
+        for model_name in model_candidates:
+            try:
+                model = genai.GenerativeModel(model_name)
+                response = model.generate_content(prompt)
+                # Clean response text if wrapped in markdown codeblocks
+                raw_text = response.text.strip()
+                if raw_text.startswith("```"):
+                    lines = raw_text.splitlines()
+                    if lines[0].startswith("```"):
+                        lines = lines[1:]
+                    if lines and lines[-1].startswith("```"):
+                        lines = lines[:-1]
+                    raw_text = "\n".join(lines).strip()
+
+                result_json = json.loads(raw_text)
+                return {
+                    "summary": result_json.get("summary", "Gemini Analysis completed."),
+                    "root_cause": result_json.get("root_cause", "N/A"),
+                    "remediation_steps": result_json.get("remediation_steps", []),
+                    "recommended_firewall_rule": result_json.get("recommended_firewall_rule", ""),
+                    "confidence_score": float(result_json.get("confidence_score", 0.95))
+                }
+            except Exception as e:
+                print(f"Gemini API model {model_name} attempt error: {e}")
+                continue
+
+        print("All Gemini models failed, falling back to dynamic simulation.")
+        return self._run_dynamic_simulation(alert_data)
+
+    def _call_openai_api(self, alert_data):
+        prompt = self._get_prompt(alert_data)
+
         try:
-            response = self.client.chat.completions.create(
+            response = self.openai_client.chat.completions.create(
                 model="gpt-4o-mini", # Fast, cost-effective, high quality
                 messages=[
                     {"role": "system", "content": "You are a cyber security expert. Always return raw valid JSON."},

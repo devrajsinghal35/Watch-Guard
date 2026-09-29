@@ -10,7 +10,7 @@ function fmtTime(ts) {
 export default function AlertList({ alerts }) {
   const [filterSeverity, setFilterSeverity] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
-  const [analyzingIndex, setAnalyzingIndex] = useState(null);
+  const [analyzingId, setAnalyzingId] = useState(null);
   const [playbookData, setPlaybookData] = useState({});
 
   const sorted = [...(alerts || [])].sort((a, b) => b.threat_score - a.threat_score);
@@ -27,23 +27,24 @@ export default function AlertList({ alerts }) {
     return matchesSev && matchesQuery;
   });
 
-  const handleAnalyze = async (alert, idx) => {
-    setAnalyzingIndex(idx);
+  const handleAnalyze = async (alert) => {
+    const alertKey = alert.id || alert.ts || alert.description;
+    setAnalyzingId(alertKey);
     try {
       const res = await analyzeIncident(alert);
       if (res.success) {
-        setPlaybookData((prev) => ({ ...prev, [idx]: res.playbook }));
+        setPlaybookData((prev) => ({ ...prev, [alertKey]: res.playbook }));
       }
     } catch (err) {
       console.error("AI Analysis failed:", err);
     }
-    setAnalyzingIndex(null);
+    setAnalyzingId(null);
   };
 
-  const closePlaybook = (idx) => {
+  const closePlaybook = (alertKey) => {
     setPlaybookData((prev) => {
       const newData = { ...prev };
-      delete newData[idx];
+      delete newData[alertKey];
       return newData;
     });
   };
@@ -91,12 +92,13 @@ export default function AlertList({ alerts }) {
           </div>
         ) : (
           filtered.map((a, idx) => {
+            const alertKey = a.id || a.ts || idx;
             const sevClass = (a.severity || 'low').toLowerCase();
-            const isAnalyzing = analyzingIndex === idx;
-            const playbook = playbookData[idx];
+            const isAnalyzing = analyzingId === alertKey;
+            const playbook = playbookData[alertKey];
 
             return (
-              <React.Fragment key={idx}>
+              <React.Fragment key={alertKey}>
                 <div className={`feed-row ${sevClass}`}>
                   <div className="feed-time">{fmtTime(a.ts)}</div>
                   <div className={`feed-sev ${sevClass}`}>
@@ -114,7 +116,7 @@ export default function AlertList({ alerts }) {
                     <span className="badge-cold">{a.protocol || 'TCP'}</span>
                     <button 
                       className="ai-copilot-btn"
-                      onClick={() => handleAnalyze(a, idx)}
+                      onClick={() => handleAnalyze(a)}
                       disabled={isAnalyzing}
                       style={{
                         background: 'linear-gradient(90deg, #6366f1, #a855f7)',
@@ -147,7 +149,7 @@ export default function AlertList({ alerts }) {
                     position: 'relative'
                   }}>
                     <button 
-                      onClick={() => closePlaybook(idx)} 
+                      onClick={() => closePlaybook(alertKey)} 
                       style={{ position: 'absolute', top: '8px', right: '8px', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
                     >
                       <X size={14} />

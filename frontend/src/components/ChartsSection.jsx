@@ -78,23 +78,37 @@ export default function ChartsSection({ stats, alerts, networkEvents }) {
     cutout: '70%',
   };
 
-  // 2. Timeline / Event Trend Chart (Aggregating events by 10s intervals or recent sequence)
-  const recentEvents = [...(networkEvents || [])].slice(0, 20).reverse();
-  const timelineLabels = recentEvents.map((e, i) => {
-    if (!e.ts) return `#${i + 1}`;
-    const date = new Date(e.ts * 1000);
-    return date.toLocaleTimeString([], { hour12: false, minute: '2-digit', second: '2-digit' });
+  // 2. Timeline / Event Throughput Chart (Real Packet Throughput aggregated in 1-second buckets)
+  const timeBuckets = {};
+  (networkEvents || []).forEach((e) => {
+    if (!e.ts) return;
+    const secKey = Math.floor(e.ts);
+    if (!timeBuckets[secKey]) {
+      timeBuckets[secKey] = 0;
+    }
+    timeBuckets[secKey] += e.length || 64;
   });
 
-  const timelineLengths = recentEvents.map((e) => e.length || 0);
+  const sortedSecKeys = Object.keys(timeBuckets).map(Number).sort((a, b) => a - b).slice(-15);
+
+  const timelineLabels = sortedSecKeys.length > 0
+    ? sortedSecKeys.map((tsSec) => {
+        const date = new Date(tsSec * 1000);
+        return date.toLocaleTimeString([], { hour12: false, minute: '2-digit', second: '2-digit' });
+      })
+    : ['Live Stream'];
+
+  const timelineValues = sortedSecKeys.length > 0
+    ? sortedSecKeys.map((tsSec) => timeBuckets[tsSec])
+    : [0];
 
   const lineData = {
-    labels: timelineLabels.length > 0 ? timelineLabels : ['No Data'],
+    labels: timelineLabels,
     datasets: [
       {
         fill: true,
-        label: 'Packet Size (Bytes)',
-        data: timelineLengths.length > 0 ? timelineLengths : [0],
+        label: 'Throughput (Bytes/sec)',
+        data: timelineValues,
         borderColor: '#38bdf8',
         backgroundColor: 'rgba(56, 189, 248, 0.12)',
         tension: 0.35,

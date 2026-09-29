@@ -2,13 +2,13 @@ import time
 from .dlp_engine import dlp_engine
 
 # Threshold parameters defining when detection alerts are triggered
-PORT_SCAN_LIMIT = 10
+PORT_SCAN_LIMIT = 5
 PORT_SCAN_SEC = 10
 
-SYN_FLOOD_LIMIT = 50
+SYN_FLOOD_LIMIT = 8
 SYN_FLOOD_SEC = 5
 
-BRUTE_FORCE_LIMIT = 5
+BRUTE_FORCE_LIMIT = 3
 BRUTE_FORCE_SEC = 180
 
 # Default deterministic threat/risk scores for different alert types

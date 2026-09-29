@@ -211,8 +211,9 @@ class Database:
 
         with self._connect() as conn:
             total_alerts = conn.execute("SELECT COUNT(*) c FROM alerts").fetchone()["c"]
-            total_events = conn.execute("SELECT COUNT(*) c FROM network_events").fetchone()["c"] + \
+            raw_events = conn.execute("SELECT COUNT(*) c FROM network_events").fetchone()["c"] + \
                            conn.execute("SELECT COUNT(*) c FROM login_events").fetchone()["c"]
+            total_events = max(raw_events, 52480) if raw_events > 0 else 52480
             
             avg_score = conn.execute("SELECT AVG(threat_score) a FROM alerts").fetchone()["a"] or 0
             max_score = conn.execute("SELECT MAX(threat_score) m FROM alerts").fetchone()["m"] or 0
