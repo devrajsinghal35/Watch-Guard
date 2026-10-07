@@ -18,7 +18,7 @@
 - **⚡ DevSecOps & Automated CI/CD**:
   - Integrated GitHub Actions pipeline (`.github/workflows/devsecops.yml`) running automated **Pytest** suites and **Bandit SAST** security analysis on every push.
 - **🎯 MITRE ATT&CK Aligned Detection Engine**:
-  - Detects SYN Floods, Port Scans, Brute Force attacks, and Data Exfiltration across **50,000+ analyzed events**.
+  - Detects SYN Floods, Port Scans, Brute Force attacks, and Data Exfiltration across **52,480 simulated packets**.
 
 ---
 
@@ -70,8 +70,7 @@ Watch-Guard/
 │   │   └── api.js          # API service layer
 │   └── package.json        # Frontend React dependencies
 ├── tests/
-│   ├── test_detection.py   # Pytest NIDS detection unit tests
-│   └── test_dlp.py         # Pytest DLP regex scanner unit tests
+│   └── test_detection.py   # Pytest NIDS detection unit tests
 └── README.md
 ```
 
