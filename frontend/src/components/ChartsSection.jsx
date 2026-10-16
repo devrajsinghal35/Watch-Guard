@@ -29,7 +29,6 @@ ChartJS.register(
 );
 
 export default function ChartsSection({ stats, alerts, networkEvents }) {
-  // 1. Severity Distribution Data
   const threatLevels = stats?.threat_levels || { LOW: 0, MEDIUM: 0, HIGH: 0, CRITICAL: 0 };
   const doughnutData = {
     labels: ['Low Risk', 'Medium Risk', 'High Risk', 'Critical'],
@@ -78,7 +77,6 @@ export default function ChartsSection({ stats, alerts, networkEvents }) {
     cutout: '70%',
   };
 
-  // 2. Timeline / Event Throughput Chart (Real Packet Throughput aggregated in 1-second buckets)
   const timeBuckets = {};
   (networkEvents || []).forEach((e) => {
     if (!e.ts) return;
@@ -145,7 +143,6 @@ export default function ChartsSection({ stats, alerts, networkEvents }) {
     },
   };
 
-  // 3. Top Attacker / Source IPs Chart
   const ipCounts = {};
   (alerts || []).forEach((a) => {
     if (a.source_ip) {
@@ -202,7 +199,6 @@ export default function ChartsSection({ stats, alerts, networkEvents }) {
 
   return (
     <div className="charts-grid">
-      {/* Donut Chart: Threat Distribution */}
       <div className="panel chart-panel">
         <div className="panel-header">
           <div className="panel-title">
@@ -215,7 +211,6 @@ export default function ChartsSection({ stats, alerts, networkEvents }) {
         </div>
       </div>
 
-      {/* Line Chart: Traffic Throughput / Packet Size */}
       <div className="panel chart-panel">
         <div className="panel-header">
           <div className="panel-title">
@@ -228,7 +223,6 @@ export default function ChartsSection({ stats, alerts, networkEvents }) {
         </div>
       </div>
 
-      {/* Horizontal Bar Chart: Top Attacker IPs */}
       <div className="panel chart-panel">
         <div className="panel-header">
           <div className="panel-title">

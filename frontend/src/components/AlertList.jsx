@@ -57,7 +57,6 @@ export default function AlertList({ alerts }) {
           <span className="count-badge">{filtered.length}</span>
         </div>
 
-        {/* Filter and Search Bar */}
         <div className="feed-controls">
           <div className="search-input-wrapper">
             <Search size={12} className="search-icon" />

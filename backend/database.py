@@ -2,7 +2,6 @@ import sqlite3
 import time
 from contextlib import contextmanager
 
-# SQLite database table templates layout schemas
 SCHEMA_SQL = """
 PRAGMA journal_mode=WAL;
 PRAGMA synchronous=NORMAL;
@@ -53,7 +52,6 @@ CREATE INDEX IF NOT EXISTS idx_login_ts ON login_events(ts DESC);
 """
 
 class Database:
-    # Database helper object that auto-initializes the schema tables
     def __init__(self, db_path):
         self.db_path = db_path
         self._stats_cache = None
@@ -61,7 +59,6 @@ class Database:
         with self._connect() as conn:
             conn.executescript(SCHEMA_SQL)
 
-    # Helper manager to safely create SQLite connections with context handling & busy timeout
     @contextmanager
     def _connect(self):
         conn = sqlite3.connect(self.db_path, timeout=20.0)
@@ -75,7 +72,6 @@ class Database:
     def invalidate_stats_cache(self):
         self._stats_cache_time = 0
 
-    # Save security alerts to the database
     def insert_alert(self, alert):
         self.invalidate_stats_cache()
         with self._connect() as conn:
@@ -100,7 +96,6 @@ class Database:
             )
             return cur.lastrowid
 
-    # Retrieve filtered alerts history based on query parameters
     def get_alerts(self, limit=100, alert_type=None, severity=None):
         sql = "SELECT * FROM alerts WHERE 1=1"
         args = []
@@ -117,14 +112,12 @@ class Database:
             res = conn.execute(sql, args).fetchall()
         return [dict(r) for r in res]
 
-    # Fetch priority threats sorted by threat score in descending order
     def get_ranked_alerts(self, limit=100):
         sql = "SELECT * FROM alerts ORDER BY threat_score DESC, ts DESC LIMIT ?"
         with self._connect() as conn:
             res = conn.execute(sql, [limit]).fetchall()
         return [dict(r) for r in res]
 
-    # Log authentication events to the database
     def insert_login_event(self, evt):
         self.invalidate_stats_cache()
         with self._connect() as conn:
@@ -147,7 +140,6 @@ class Database:
             res = conn.execute(sql, [ip_address, limit]).fetchall()
         return [dict(r) for r in res]
 
-    # Save general packet metadata details to the database
     def insert_network_event(self, pkt):
         self.invalidate_stats_cache()
         with self._connect() as conn:
@@ -165,7 +157,6 @@ class Database:
                 ),
             )
 
-    # Perform batch insertion for fast mock network data loading
     def insert_network_events_batch(self, pkts):
         if not pkts:
             return
@@ -188,14 +179,12 @@ class Database:
                 ]
             )
 
-    # Retrieve recent network events to update the UI dashboard feed
     def get_live_network(self, limit=50):
         sql = "SELECT * FROM network_events ORDER BY ts DESC LIMIT ?"
         with self._connect() as conn:
             res = conn.execute(sql, [limit]).fetchall()
         return [dict(r) for r in res]
 
-    # Wipe all captured data and stored alerts for a fresh system reset
     def reset_all(self):
         self.invalidate_stats_cache()
         with self._connect() as conn:
@@ -203,7 +192,6 @@ class Database:
             conn.execute("DELETE FROM login_events")
             conn.execute("DELETE FROM network_events")
 
-    # Calculate aggregate statistics for the dashboard UI cards with 1.5s TTL caching
     def get_stats(self):
         now = time.time()
         if self._stats_cache and (now - self._stats_cache_time < 1.5):

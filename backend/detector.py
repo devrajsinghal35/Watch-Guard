@@ -1,7 +1,6 @@
 import time
 from .dlp_engine import dlp_engine
 
-# Threshold parameters defining when detection alerts are triggered
 PORT_SCAN_LIMIT = 5
 PORT_SCAN_SEC = 10
 
@@ -11,7 +10,6 @@ SYN_FLOOD_SEC = 5
 BRUTE_FORCE_LIMIT = 3
 BRUTE_FORCE_SEC = 180
 
-# Default deterministic threat/risk scores for different alert types
 SCORES = {
     "PORT_SCAN": 70,
     "BRUTE_FORCE": 80,
@@ -20,7 +18,6 @@ SCORES = {
     "NORMAL": 10,
 }
 
-# Severity mapping corresponding to each alert type
 SEVERITIES = {
     "PORT_SCAN": "HIGH",
     "BRUTE_FORCE": "HIGH",
@@ -29,11 +26,11 @@ SEVERITIES = {
     "NORMAL": "LOW",
 }
 
-# Returns the direct threat score based on the alert type
+
 def score_threat(alert_name):
     return SCORES.get(alert_name, 20)
 
-# Helper function to classify severity label from the threat score value
+
 def get_severity(score_val):
     if score_val >= 90:
         return "CRITICAL"
@@ -43,19 +40,16 @@ def get_severity(score_val):
         return "MEDIUM"
     return "LOW"
 
+
 class DetectionEngine:
-    # Initialize history buffer arrays for sliding window comparisons
     def __init__(self):
         self.packets = []
         self.logins = []
 
-    # Analyzes each new packet and runs port scan and syn flood detection rules
     def process_packet(self, pkt):
         now = pkt.get("ts", time.time())
         pkt["ts"] = now
         self.packets.append(pkt)
-
-        # Remove packets older than 15 seconds from the memory buffer
         self.packets = [p for p in self.packets if now - p["ts"] <= 15]
 
         found_alerts = []
@@ -65,7 +59,7 @@ class DetectionEngine:
         if not sip:
             return found_alerts
 
-        # RULE 1: Port Scan checks - Check if a source IP has scanned multiple ports
+        # Port scan detection
         matching_pkts = [
             p for p in self.packets
             if p.get("source_ip") == sip and now - p["ts"] <= PORT_SCAN_SEC
@@ -87,7 +81,7 @@ class DetectionEngine:
                 "description": f"Port Scan: {len(unique_ports)} ports probed from {sip} within {PORT_SCAN_SEC}s.",
             })
 
-        # RULE 2: SYN Flood checks - Check for high-rate SYN traffic targeting destination IP/ports
+        # SYN flood detection
         syn_pkts = [
             p for p in matching_pkts
             if p.get("protocol") == "TCP" and "S" in str(p.get("flags", "")) and "A" not in str(p.get("flags", ""))
@@ -109,7 +103,7 @@ class DetectionEngine:
                 "description": f"SYN Flood: High rate of TCP SYN packets ({len(syn_pkts)} pkts/{SYN_FLOOD_SEC}s) from {sip} targeting {dip}:{target_p}.",
             })
 
-        # RULE 3: DLP Violation checks - Check for sensitive data in payload
+        # Deep packet inspection / DLP
         payload = pkt.get("payload", "")
         if payload:
             dlp_violations = dlp_engine.scan_payload(payload)
@@ -131,17 +125,13 @@ class DetectionEngine:
 
         return found_alerts
 
-    # Evaluates login attempt events to trigger brute force alerts
     def process_login_event(self, login_evt):
         now = login_evt.get("ts", time.time())
         login_evt["ts"] = now
         self.logins.append(login_evt)
-
-        # Remove historical login records older than the brute force window
         self.logins = [e for e in self.logins if now - e["ts"] <= BRUTE_FORCE_SEC]
 
         found_alerts = []
-        # Analyze brute force scenarios only for failed login attempts
         if login_evt.get("status") == "failed":
             sip = login_evt.get("source_ip")
             srv = login_evt.get("service", "SSH")
@@ -151,7 +141,6 @@ class DetectionEngine:
                 and e.get("status") == "failed" and now - e["ts"] <= BRUTE_FORCE_SEC
             ]
 
-            # Generate brute force alert if failure threshold is met
             if len(failures) >= BRUTE_FORCE_LIMIT:
                 score = SCORES["BRUTE_FORCE"]
                 port_num = login_evt.get("port", 22)

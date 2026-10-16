@@ -23,23 +23,20 @@ export default function Header({
       </div>
 
       <div className="header-actions">
-        {/* Connection status indicator */}
         <div className={`status-badge ${apiOnline ? 'online' : 'offline'}`}>
           {apiOnline ? <Wifi size={13} /> : <WifiOff size={13} />}
           <span>{apiOnline ? 'API ONLINE' : 'DISCONNECTED'}</span>
         </div>
 
-        {/* System Reset Button */}
         <button
           className="btn-capture btn-reset"
           onClick={onResetSystem}
-          title="Clear all demo data and start fresh live capture"
+          title="Reset telemetry capture state"
         >
           <RotateCcw size={14} />
           RESET CAPTURE
         </button>
 
-        {/* Live Sniffing / Demo Mode toggle button */}
         <button
           className={`btn-capture ${demoMode ? 'active' : ''}`}
           onClick={onToggleMode}

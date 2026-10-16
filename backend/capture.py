@@ -2,7 +2,6 @@ import time
 import logging
 import random
 
-# Mock payloads for network simulation
 BENIGN_PAYLOADS = [
     "GET /index.html HTTP/1.1\r\nHost: example.com",
     "GET /static/css/style.css HTTP/1.1\r\nHost: myapp.local",
@@ -15,33 +14,28 @@ BENIGN_PAYLOADS = [
 ]
 
 DLP_PAYLOADS = [
-    "Found user data: John Doe, SSN: 123-45-6789", # DLP trigger
-    "POST /login HTTP/1.1\r\nAuthorization: Bearer mysecrettoken1234567890abcdef" # DLP trigger
+    "Found user data: John Doe, SSN: 123-45-6789",
+    "POST /login HTTP/1.1\r\nAuthorization: Bearer mysecrettoken1234567890abcdef"
 ]
 
-# Logger setup to print debug logs
 logger = logging.getLogger("watchguard.capture")
 
 class PacketCapturer:
-    # Constructor to initialize sniffer state
     def __init__(self, callback=None):
         self.callback = callback
         self.running = False
 
-    # Capture/sniff a single network packet and extract metadata
     def sniff_packet(self):
         curr_time = time.time()
         r = random.random()
         
-        # 1. Simulate Port Scan behavior from 192.168.1.105 (25% of traffic)
         if r < 0.25:
             src_ip = "192.168.1.105"
             dst_ip = "192.168.1.4"
-            dport = random.randint(1, 1024) # Scanning random ports
+            dport = random.randint(1, 1024)
             proto = "TCP"
             flags = "S"
             payload = ""
-        # 2. Simulate SYN Flood behavior from 192.168.1.188 (25% of traffic)
         elif r < 0.50:
             src_ip = "192.168.1.188"
             dst_ip = "192.168.1.3"
@@ -49,7 +43,6 @@ class PacketCapturer:
             proto = "TCP"
             flags = "S"
             payload = ""
-        # 3. Simulate DLP Exfiltration occasionally (0.5% chance)
         elif r < 0.505:
             src_ip = f"192.168.1.{random.randint(50, 99)}"
             dst_ip = f"192.168.1.{random.randint(2, 5)}"
@@ -57,7 +50,6 @@ class PacketCapturer:
             proto = "TCP"
             flags = "PA"
             payload = random.choice(DLP_PAYLOADS)
-        # 4. Normal benign traffic (50% of traffic)
         else:
             src_ip = f"192.168.1.{random.randint(10, 254)}"
             dst_ip = f"192.168.1.{random.randint(2, 9)}"

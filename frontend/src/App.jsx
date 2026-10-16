@@ -68,11 +68,11 @@ export default function App() {
 
   const handleResetSystem = async () => {
     try {
-      addToast('🧹 Resetting system & starting fresh live capture...', 'info');
+      addToast('Resetting capture state...', 'info');
       const res = await resetSystem();
       if (res.success) {
         setDemoMode(false);
-        addToast('✅ Demo data cleared. Live Mode packet sniffing active!', 'success');
+        addToast('Capture reset. Live packet monitor active.', 'success');
         refreshData();
       }
     } catch (err) {
@@ -84,7 +84,7 @@ export default function App() {
     try {
       const res = await triggerDemoAttack(attackType);
       if (res.success) {
-        addToast(`⚡ Watch Guard detected synthetic ${attackType} vector!`, 'success');
+        addToast(`Detected ${attackType} pattern.`, 'success');
         setHighlightNetwork(true);
         setTimeout(() => setHighlightNetwork(false), 1500);
         refreshData();
@@ -96,10 +96,10 @@ export default function App() {
 
   const handleSeedDemoData = async () => {
     try {
-      addToast('⌛ Seeding 50,000+ Watch Guard telemetry events...', 'info');
+      addToast('Generating telemetry events...', 'info');
       const res = await seedDemoData();
       if (res.success) {
-        addToast(`✅ Seeded ${res.packets_seeded.toLocaleString()} packets & ${res.alerts_seeded} alerts!`, 'success');
+        addToast(`Generated ${res.packets_seeded.toLocaleString()} packets & ${res.alerts_seeded} alerts.`, 'success');
         refreshData();
       }
     } catch (err) {
@@ -117,27 +117,21 @@ export default function App() {
       />
 
       <main className="app-container">
-        {/* Top Summary Metrics */}
         <Dashboard stats={stats} />
-
-        {/* Dynamic Visualizations Grid */}
         <ChartsSection stats={stats} alerts={alerts} networkEvents={networkEvents} />
 
-        {/* Live Feeds Grid */}
         <div className="grid-equal">
           <AlertList alerts={alerts} />
           <NetworkFeed events={networkEvents} highlighted={highlightNetwork} />
         </div>
       </main>
 
-      {/* Interactive Login Triage Modal */}
       <LoginTriageModal
         isOpen={triageModalOpen}
         onClose={() => setTriageModalOpen(false)}
         onAlertGenerated={refreshData}
       />
 
-      {/* Toast Notification Stack */}
       <div className="toast-container">
         {toasts.map((t) => (
           <div key={t.id} className={`toast ${t.type}`}>

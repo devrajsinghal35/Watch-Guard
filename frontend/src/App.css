@@ -35,7 +35,6 @@ body {
               radial-gradient(circle at 10% 30%, rgba(99, 102, 241, 0.03), transparent 30%);
 }
 
-/* Header Navbar */
 .header {
   display: flex;
   align-items: center;
@@ -237,7 +236,6 @@ body {
   transform: translateY(-1px);
 }
 
-/* App Container Layout */
 .app-container {
   padding: 24px 32px;
   display: flex;
@@ -247,7 +245,6 @@ body {
   margin: 0 auto;
 }
 
-/* Summary Metrics Cards */
 .stat-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
@@ -307,7 +304,6 @@ body {
   margin-top: 4px;
 }
 
-/* Dynamic Charts Grid */
 .charts-grid {
   display: grid;
   grid-template-columns: 1fr 1.3fr 1fr;
@@ -335,7 +331,6 @@ body {
   width: 100%;
 }
 
-/* Feeds Equal Grid */
 .grid-equal {
   display: grid;
   grid-template-columns: 1.1fr 0.9fr;
@@ -382,7 +377,6 @@ body {
   font-weight: 500;
 }
 
-/* Feed Controls Toolbar */
 .feed-controls {
   display: flex;
   align-items: center;
@@ -483,7 +477,6 @@ body {
   border-color: rgba(245, 158, 11, 0.3);
 }
 
-/* Feed Lists & Items */
 .feed {
   display: flex;
   flex-direction: column;
@@ -593,7 +586,6 @@ body {
   border: 1px solid rgba(245, 158, 11, 0.3);
 }
 
-/* Modal Styling for Triage Tool */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -742,7 +734,6 @@ body {
   font-size: 11.5px;
 }
 
-/* Toast Notifications */
 .toast-container {
   position: fixed;
   bottom: 24px;
@@ -781,7 +772,6 @@ body {
   100% { border-color: var(--panel-border); box-shadow: none; }
 }
 
-/* Responsive Media Queries */
 @media (max-width: 1200px) {
   .stat-grid { grid-template-columns: repeat(3, 1fr); }
   .charts-grid { grid-template-columns: 1fr; }

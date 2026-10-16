@@ -10,18 +10,16 @@ from backend.detector import DetectionEngine
 from backend.capture import PacketCapturer
 from backend.ai_copilot import ai_copilot
 
-# Define backend and database paths
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = os.path.join(BASE_DIR, "backend", "watch_guard.db")
 
 app = Flask(__name__)
-CORS(app) # Enable CORS to allow requests from the React frontend
+CORS(app)
 
 db = Database(DB_PATH)
 detector = DetectionEngine()
 capturer = PacketCapturer()
 
-# Live sniffing mode status parameters
 IS_DEMO_MODE = False
 SNIFFER_THREAD = None
 SNIFFER_RUNNING = False
@@ -48,7 +46,6 @@ def sniffer_worker():
             print("Sniffer worker error:", e)
         time.sleep(0.1)
 
-# API status endpoint to check server health
 @app.route("/")
 def home():
     return jsonify({
@@ -57,7 +54,6 @@ def home():
         "mode": "DEMO" if IS_DEMO_MODE else "LIVE"
     })
 
-# High-performance consolidated dashboard telemetry feed endpoint
 @app.route("/api/dashboard/feed")
 def dashboard_feed_endpoint():
     return jsonify({
@@ -70,12 +66,10 @@ def dashboard_feed_endpoint():
         }
     })
 
-# API summary metrics values calculate endpoint
 @app.route("/api/stats")
 def stats_endpoint():
     return jsonify({"success": True, "data": db.get_stats()})
 
-# Standard alerts logs history endpoint
 @app.route("/api/alerts")
 def alerts_endpoint():
     limit = request.args.get("limit", default=100, type=int)
@@ -84,21 +78,18 @@ def alerts_endpoint():
     alerts_list = db.get_alerts(limit=limit, alert_type=atype, severity=sev)
     return jsonify({"success": True, "count": len(alerts_list), "data": alerts_list})
 
-# Ranked alerts table view endpoints
 @app.route("/api/alerts/ranked")
 def ranked_alerts_endpoint():
     limit = request.args.get("limit", default=100, type=int)
     ranked = db.get_ranked_alerts(limit=limit)
     return jsonify({"success": True, "count": len(ranked), "data": ranked})
 
-# Live network events table data endpoint
 @app.route("/api/network/live")
 def live_network_endpoint():
     limit = request.args.get("limit", default=50, type=int)
     net_data = db.get_live_network(limit=limit)
     return jsonify({"success": True, "count": len(net_data), "data": net_data})
 
-# Raw custom authentication log ingestion API
 @app.route("/api/login-events", methods=["POST"])
 def new_login_event():
     payload = request.get_json(silent=True) or {}
@@ -115,7 +106,6 @@ def new_login_event():
         "status": payload["status"]
     }
     db.insert_login_event(evt)
-
     new_alerts = detector.process_login_event(evt)
 
     for a in new_alerts:
@@ -123,7 +113,6 @@ def new_login_event():
 
     return jsonify({"success": True, "alerts_generated": len(new_alerts), "alerts": new_alerts}), 201
 
-# Single custom login verification form rules checker
 @app.route("/api/login/analyze", methods=["POST"])
 def analyze_login_attempt():
     payload = request.get_json(silent=True) or {}
@@ -167,7 +156,6 @@ def analyze_login_attempt():
         }
     })
 
-# AI GenAI Incident Analysis Endpoint
 @app.route("/api/ai/analyze-incident", methods=["POST"])
 def ai_analyze_incident():
     payload = request.get_json(silent=True) or {}
@@ -180,13 +168,11 @@ def ai_analyze_incident():
         "playbook": analysis_result
     })
 
-# System active state mode fetch endpoint
 @app.route("/api/mode")
 def system_mode():
     global IS_DEMO_MODE
     return jsonify({"success": True, "demo_mode": IS_DEMO_MODE, "label": "DEMO MODE" if IS_DEMO_MODE else "LIVE MODE"})
 
-# Toggle between demo simulation data and real interface packets
 @app.route("/api/mode/toggle", methods=["POST"])
 def toggle_system_mode():
     global IS_DEMO_MODE, SNIFFER_RUNNING, SNIFFER_THREAD
@@ -199,24 +185,19 @@ def toggle_system_mode():
             SNIFFER_THREAD.start()
     else:
         SNIFFER_RUNNING = False
-        # Asynchronously seed demo packets in background thread so HTTP response is instant
         threading.Thread(target=seed_demo_data, daemon=True).start()
 
     return jsonify({"success": True, "demo_mode": IS_DEMO_MODE, "label": "DEMO MODE" if IS_DEMO_MODE else "LIVE MODE"})
 
-# Reset database, disable demo mode, and start fresh live packet capture
 @app.route("/api/reset", methods=["POST"])
 def reset_system():
     global IS_DEMO_MODE, SNIFFER_RUNNING, SNIFFER_THREAD
-    # 1. Clear database completely
     db.reset_all()
     if hasattr(detector, "logins"):
         detector.logins.clear()
     
-    # 2. Force Live Mode
     IS_DEMO_MODE = False
     
-    # 3. Ensure live sniffer worker is active
     if not SNIFFER_RUNNING:
         SNIFFER_RUNNING = True
         SNIFFER_THREAD = threading.Thread(target=sniffer_worker, daemon=True)
@@ -229,13 +210,11 @@ def reset_system():
         "label": "LIVE MODE"
     })
 
-# Start background sniffer worker by default for Live Mode
 if not IS_DEMO_MODE and not SNIFFER_RUNNING:
     SNIFFER_RUNNING = True
     SNIFFER_THREAD = threading.Thread(target=sniffer_worker, daemon=True)
     SNIFFER_THREAD.start()
 
-# Simulates custom synthetic network events in demo mode
 @app.route("/api/demo/trigger", methods=["POST"])
 def trigger_demo_event():
     payload = request.get_json(silent=True) or {}
@@ -284,14 +263,12 @@ def trigger_demo_event():
         "alerts": triggered
     })
 
-# High-speed data seeding endpoint for generating 50,000+ packets instantly
 @app.route("/api/demo/seed", methods=["POST"])
 def seed_demo_data():
     ts = time.time()
     batch_size = 52480
     pkts = []
     
-    # Pre-generate 52,480 packets in memory
     for i in range(1000):
         src = f"192.168.1.{random.randint(10, 250)}"
         dst = f"192.168.1.{random.randint(2, 5)}"
@@ -310,10 +287,8 @@ def seed_demo_data():
             "length": length
         })
 
-    # Batch insert network events
     db.insert_network_events_batch(pkts)
 
-    # Insert high-quality demonstration alerts covering all resume categories
     demo_alerts = [
         {
             "ts": ts - 10,
