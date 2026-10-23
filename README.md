@@ -9,7 +9,7 @@ Watch Guard is a Network Security Monitoring (NSM) and Security Operations Cente
 ## Architecture & Features
 
 - **Incident Response Assistant**:
-  - Analyzes active network security alerts to generate remediation playbooks, root-cause analyses, confidence ratings, and Linux `iptables` mitigation rules. Supports Gemini and OpenAI APIs with a deterministic fallback engine.
+  - Analyzes active network security alerts to generate remediation playbooks, root-cause analyses, confidence ratings, and Linux `iptables` mitigation rules. Powered by Google Gemini API with a deterministic fallback engine.
 - **Regex-Based Data Loss Prevention (DLP)**:
   - Inspects packet payloads for unencrypted sensitive information (SSNs, credit card numbers, API bearer tokens, and internal confidential headers) with automated redaction.
 - **SOC Operations Dashboard (Chart.js)**:
@@ -65,7 +65,7 @@ Watch-Guard/
 │       └── devsecops.yml       # GitHub Actions CI/CD (Pytest + Bandit SAST)
 ├── backend/
 │   ├── app.py                  # Flask application routes and telemetry controller
-│   ├── ai_copilot.py           # Incident response playbook engine (Gemini/OpenAI/Deterministic)
+│   ├── ai_copilot.py           # Incident response playbook engine (Gemini/Deterministic)
 │   ├── capture.py              # Packet telemetry capture and synthetic flow generator
 │   ├── database.py             # SQLite persistence layer and WAL-mode database interface
 │   ├── detector.py             # MITRE ATT&CK rule-based sliding-window detection engine
@@ -117,10 +117,8 @@ source venv/bin/activate
 # Install backend dependencies
 pip install -r backend/requirements.txt
 
-# (Optional) Set LLM API Key for Incident Playbook generation
+# (Optional) Set Google Gemini API Key for Incident Playbook generation
 export GEMINI_API_KEY="your-gemini-key"
-# or
-export OPENAI_API_KEY="your-openai-key"
 
 # Run Flask backend server
 python3 -m backend.app

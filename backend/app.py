@@ -2,6 +2,7 @@ import os
 import random
 import time
 import threading
+import re
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 
@@ -17,7 +18,7 @@ app = Flask(__name__)
 CORS(app)
 
 db = Database(DB_PATH)
-detector = DetectionEngine()
+detector = DetectionEngine(db=db)
 capturer = PacketCapturer()
 
 IS_DEMO_MODE = False
@@ -193,8 +194,7 @@ def toggle_system_mode():
 def reset_system():
     global IS_DEMO_MODE, SNIFFER_RUNNING, SNIFFER_THREAD
     db.reset_all()
-    if hasattr(detector, "logins"):
-        detector.logins.clear()
+    detector.reset()
     
     IS_DEMO_MODE = False
     
@@ -209,6 +209,82 @@ def reset_system():
         "demo_mode": False,
         "label": "LIVE MODE"
     })
+
+# --- Adaptive Rulebook REST APIs ---
+
+@app.route("/api/rules", methods=["GET"])
+def list_rules():
+    rules = db.get_all_rules()
+    return jsonify({"success": True, "count": len(rules), "data": rules})
+
+@app.route("/api/rules/candidates", methods=["GET"])
+def list_candidates():
+    status = request.args.get("status")
+    cands = db.get_candidate_rules(status=status)
+    return jsonify({"success": True, "count": len(cands), "data": cands})
+
+@app.route("/api/rules/propose", methods=["POST"])
+def propose_candidate_rule():
+    payload = request.get_json(silent=True) or {}
+    if not payload.get("pattern") or not payload.get("name"):
+        return jsonify({"success": False, "error": "Rule name and pattern are required"}), 400
+
+    # Safely validate regex pattern syntax
+    try:
+        re.compile(payload["pattern"])
+    except re.error as e:
+        return jsonify({"success": False, "error": f"Invalid regex pattern: {e}"}), 400
+
+    candidate_id = f"CAND_{int(time.time()*1000)}"
+    candidate = {
+        "candidate_id": candidate_id,
+        "name": payload["name"],
+        "category": payload.get("category", "CUSTOM_ANOMALY"),
+        "pattern": payload["pattern"],
+        "target_field": payload.get("target_field", "payload"),
+        "severity": payload.get("severity", "HIGH"),
+        "threat_score": int(payload.get("threat_score", 75)),
+        "rationale": payload.get("rationale", "Proactive signature proposed from telemetry anomaly."),
+        "trigger_sample": payload.get("trigger_sample", ""),
+        "validation_status": "VALIDATED",
+        "false_positive_rate": 0.0
+    }
+    db.insert_candidate_rule(candidate)
+    return jsonify({"success": True, "candidate_id": candidate_id, "candidate": candidate}), 201
+
+@app.route("/api/rules/approve", methods=["POST"])
+def approve_rule():
+    payload = request.get_json(silent=True) or {}
+    candidate_id = payload.get("candidate_id")
+    approver = payload.get("approver", "SOC_LEAD")
+
+    if not candidate_id:
+        return jsonify({"success": False, "error": "candidate_id is required"}), 400
+
+    ok, res = db.approve_candidate_rule(candidate_id, approver=approver)
+    if not ok:
+        return jsonify({"success": False, "error": res}), 400
+
+    # Hot-reload rules in running detection engine
+    detector.sync_rules_from_db()
+    return jsonify({"success": True, "message": f"Rule {res} approved and hot-reloaded into detection engine.", "rule_id": res})
+
+@app.route("/api/rules/toggle", methods=["POST"])
+def toggle_rule():
+    payload = request.get_json(silent=True) or {}
+    rule_id = payload.get("rule_id")
+    status = payload.get("status", "INACTIVE")
+    if not rule_id:
+        return jsonify({"success": False, "error": "rule_id is required"}), 400
+
+    db.set_rule_status(rule_id, status)
+    detector.sync_rules_from_db()
+    return jsonify({"success": True, "message": f"Rule {rule_id} status updated to {status}."})
+
+@app.route("/api/rules/audit", methods=["GET"])
+def get_audit_logs():
+    logs = db.get_rule_audit_logs(limit=50)
+    return jsonify({"success": True, "count": len(logs), "data": logs})
 
 if not IS_DEMO_MODE and not SNIFFER_RUNNING:
     SNIFFER_RUNNING = True
@@ -269,7 +345,7 @@ def seed_demo_data():
     batch_size = 52480
     pkts = []
     
-    for i in range(1000):
+    for i in range(batch_size):
         src = f"192.168.1.{random.randint(10, 250)}"
         dst = f"192.168.1.{random.randint(2, 5)}"
         sport = random.choice([80, 443, 22, 53, 3389] + list(range(49152, 65535, 17)))
@@ -278,7 +354,7 @@ def seed_demo_data():
         length = random.randint(40, 1500)
         
         pkts.append({
-            "ts": ts - (1000 - i) * 0.1,
+            "ts": ts - (batch_size - i) * 0.05,
             "source_ip": src,
             "source_port": sport,
             "destination_ip": dst,

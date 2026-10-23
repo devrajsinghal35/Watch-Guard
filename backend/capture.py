@@ -27,37 +27,14 @@ class PacketCapturer:
 
     def sniff_packet(self):
         curr_time = time.time()
-        r = random.random()
         
-        if r < 0.25:
-            src_ip = "192.168.1.105"
-            dst_ip = "192.168.1.4"
-            dport = random.randint(1, 1024)
-            proto = "TCP"
-            flags = "S"
-            payload = ""
-        elif r < 0.50:
-            src_ip = "192.168.1.188"
-            dst_ip = "192.168.1.3"
-            dport = 443
-            proto = "TCP"
-            flags = "S"
-            payload = ""
-        elif r < 0.505:
-            src_ip = f"192.168.1.{random.randint(50, 99)}"
-            dst_ip = f"192.168.1.{random.randint(2, 5)}"
-            dport = 80
-            proto = "TCP"
-            flags = "PA"
-            payload = random.choice(DLP_PAYLOADS)
-        else:
-            src_ip = f"192.168.1.{random.randint(10, 254)}"
-            dst_ip = f"192.168.1.{random.randint(2, 9)}"
-            dport = random.choice([80, 443, 22, 53, 3389, 8080]) if random.random() < 0.4 else random.randint(1024, 49151)
-            proto = random.choice(["TCP", "UDP", "TCP", "TCP"])
-            flags = "PA" if proto == "TCP" else ""
-            payload = random.choice(BENIGN_PAYLOADS) if random.random() < 0.05 else ""
-
+        # In live background capture, generate realistic benign traffic across varying hosts & services
+        src_ip = f"192.168.1.{random.randint(10, 254)}"
+        dst_ip = f"192.168.1.{random.randint(1, 15)}"
+        dport = random.choice([80, 443, 22, 53, 3389, 8080, 8443, 5000]) if random.random() < 0.6 else random.randint(1024, 49151)
+        proto = random.choice(["TCP", "UDP", "TCP", "TCP"])
+        flags = "PA" if proto == "TCP" else ""
+        payload = random.choice(BENIGN_PAYLOADS) if random.random() < 0.1 else ""
         sport = random.randint(49152, 65535)
         
         return {

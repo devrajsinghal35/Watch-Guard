@@ -15,7 +15,6 @@ export default function Header({
             <Shield size={20} color="#38bdf8" />
           </div>
           <span className="brand-name">WATCH GUARD</span>
-          <span className="brand-badge">SOC 2.0</span>
         </div>
         <span className="header-subtitle">
           Real-Time Threat Intelligence & Network Security Operations Console

@@ -3,20 +3,12 @@ import random
 import os
 
 try:
-    from openai import OpenAI
-except ImportError:
-    OpenAI = None
-
-try:
     import google.generativeai as genai
 except ImportError:
     genai = None
 
 class AICopilot:
     def __init__(self):
-        self.openai_api_key = os.environ.get("OPENAI_API_KEY")
-        self.openai_client = OpenAI(api_key=self.openai_api_key) if self.openai_api_key and OpenAI else None
-        
         self.gemini_api_key = os.environ.get("GEMINI_API_KEY")
         if self.gemini_api_key and genai:
             genai.configure(api_key=self.gemini_api_key)
@@ -36,9 +28,6 @@ class AICopilot:
     def analyze_incident(self, alert_data):
         if self.gemini_model:
             return self._call_gemini_api(alert_data)
-            
-        if self.openai_client:
-            return self._call_openai_api(alert_data)
         
         return self._run_dynamic_simulation(alert_data)
 
@@ -99,32 +88,6 @@ class AICopilot:
                 continue
 
         return self._run_dynamic_simulation(alert_data)
-
-    def _call_openai_api(self, alert_data):
-        prompt = self._get_prompt(alert_data)
-
-        try:
-            response = self.openai_client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": "You are a cyber security expert. Always return raw valid JSON."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.2,
-                response_format={ "type": "json_object" }
-            )
-            
-            result_json = json.loads(response.choices[0].message.content)
-            return {
-                "summary": result_json.get("summary", "Analysis failed to generate summary."),
-                "root_cause": result_json.get("root_cause", "N/A"),
-                "remediation_steps": result_json.get("remediation_steps", []),
-                "recommended_firewall_rule": result_json.get("recommended_firewall_rule", ""),
-                "confidence_score": float(result_json.get("confidence_score", 0.90))
-            }
-        except Exception as e:
-            print(f"OpenAI API Error: {e}")
-            return self._run_dynamic_simulation(alert_data)
 
     def _run_dynamic_simulation(self, alert_data):
         alert_type = alert_data.get('alert_type', 'UNKNOWN')
